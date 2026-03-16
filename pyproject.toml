@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bidbridge"
+version = "0.1.0"
+description = "Seeded research repo for primary dealer bridge / Treasury auction capacity analysis."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+  {name = "Shane Wray"}
+]
+dependencies = [
+  "pandas>=2.0",
+  "PyYAML>=6.0",
+  "matplotlib>=3.7",
+  "requests>=2.28",
+  "xlrd>=2.0",
+  "statsmodels>=0.14",
+  "linearmodels>=6.0",
+  "scikit-learn>=1.4",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+]
+
+[project.scripts]
+bidbridge = "bidbridge.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["bidbridge*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

@@ -1,0 +1,82 @@
+sources:
+  primary_dealer_statistics:
+    label: NY Fed Primary Dealer Statistics
+    priority: 1
+    frequency: weekly
+    grain: aggregate weekly market activity
+    page_url: https://www.newyorkfed.org/markets/counterparties/primary-dealers-statistics
+    api_url: https://markets.newyorkfed.org/api/pd/
+    retrieval_status: implemented
+    notes: >
+      Fetched via NY Fed Markets API. Provides weekly dealer Treasury positions (total,
+      bills, coupons by maturity, TIPS, FRN) and financing (repo/reverse repo). Values in
+      millions USD. Note: repo data increasingly sparse from 2022 onward.
+
+  treasury_auctions:
+    label: Treasury Securities Auctions Data / Auction Query
+    priority: 1
+    frequency: daily
+    grain: auction / issue
+    page_url: https://fiscaldata.treasury.gov/datasets/treasury-securities-auctions-data/
+    api_url: https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/od/auctions_query
+    retrieval_status: implemented
+    notes: >
+      Fetched via FiscalData API. Bills use high_discnt_rate/high_investment_rate instead
+      of high_yield. Completeness check uses bid_to_cover_ratio (populated for all types).
+
+  upcoming_auctions:
+    label: Treasury Securities Upcoming Auctions
+    priority: 1
+    frequency: weekly
+    grain: upcoming auction notice
+    page_url: https://fiscaldata.treasury.gov/datasets/upcoming-auctions/
+    api_url: https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/od/auctions_query
+    retrieval_status: implemented
+    notes: >
+      Uses same FiscalData endpoint, filtering for auctions with high_yield=null.
+
+  investor_class_allotments:
+    label: Treasury Investor Class Auction Allotments
+    priority: 1
+    frequency: monthly_or_semimonthly
+    grain: auction / issue
+    page_url: https://home.treasury.gov/data/investor-class-auction-allotments
+    retrieval_status: implemented
+    notes: >
+      Scraped from Treasury.gov .xls files (date-stamped filenames change on each release).
+      Dollar amounts converted to shares by dividing by total_issue_amount. CMBs mapped to Bills.
+
+  soma_holdings:
+    label: NY Fed SOMA Holdings
+    priority: 2
+    frequency: weekly
+    grain: aggregate by security type
+    page_url: https://www.newyorkfed.org/markets/soma-holdings
+    api_url: https://markets.newyorkfed.org/api/soma/summary.json
+    retrieval_status: implemented
+    notes: >
+      Fetched via NY Fed Markets API summary endpoint. Provides weekly aggregate SOMA
+      holdings by type (bills, notes/bonds, TIPS, FRN, MBS, agencies).
+
+  h8:
+    label: Federal Reserve H.8
+    priority: 2
+    frequency: weekly
+    grain: weekly aggregate bank balance sheet
+    page_url: https://www.federalreserve.gov/releases/h8/current/default.htm
+    api_url: https://fred.stlouisfed.org/graph/fredgraph.csv
+    retrieval_status: implemented
+    notes: >
+      Fetched via FRED CSV endpoint. Key series: TASACBW027SBOG (Treasury & agency
+      securities, SA), TASACBW027NBOG (NSA). Values converted from billions to millions.
+
+  trace_treasury:
+    label: FINRA TRACE Treasury Aggregate Statistics
+    priority: 3
+    frequency: daily_or_monthly
+    grain: aggregate trading volume
+    page_url: https://www.finra.org/filing-reporting/trace/data/trace-treasury-aggregates/about
+    retrieval_status: optional
+    notes: >
+      Optional market-depth overlay. Weekly format ended in 2023; production logic should align
+      daily or monthly aggregates to the auction-week panel carefully.

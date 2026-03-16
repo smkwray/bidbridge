@@ -1,0 +1,38 @@
+project:
+  name: bidbridge
+  tag_line: Primary dealer bridge / auction capacity
+  seed_created: 2026-03-16
+  status: scaffold
+
+sample:
+  start_date: 2010-01-01
+  end_date: null
+  week_definition: monday_start
+  note: >
+    Monday-start weekly aggregation is the seed default. Codex should verify source-specific
+    reporting calendars before locking the production auction-week rule.
+
+instruments:
+  groups:
+    - bills
+    - nominal_coupons
+    - bonds
+    - frns
+    - tips
+
+maturity_buckets:
+  short_coupon: ["2Y", "3Y"]
+  belly_coupon: ["5Y", "7Y"]
+  long_coupon: ["10Y", "20Y", "30Y"]
+  bills: ["4W", "6W", "8W", "13W", "17W", "26W", "52W"]
+
+stress_flags:
+  - weak_bank_absorption
+  - qt_period
+  - tga_rebuild
+  - risk_off_window
+
+outputs:
+  main_panel: data/processed/auction_week_panel.csv
+  main_figures_dir: outputs/figures
+  main_tables_dir: outputs/tables

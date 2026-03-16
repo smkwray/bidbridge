@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BidBridge — Primary Dealer Intermediation in Treasury Markets</title>
+  <meta name="description" content="Do primary dealers act as balance-sheet bridges when Treasury supply exceeds end-investor demand? An empirical investigation using public data.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,700;1,400;1,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ===== HERO ===== -->
+  <header class="hero">
+    <div class="container">
+      <p class="hero-label">Research</p>
+      <h1 class="hero-title">BidBridge</h1>
+      <p class="hero-subtitle">Do primary dealers act as short-run balance-sheet bridges when Treasury supply exceeds end-investor demand?</p>
+      <div class="hero-stats" id="hero-stats"></div>
+      <nav class="hero-nav">
+        <a href="#findings" class="btn btn-primary">Key Findings</a>
+        <a href="#methods" class="btn btn-outline">Methods</a>
+        <a href="#data" class="btn btn-outline">Data Sources</a>
+        <a href="https://github.com/smkwray/bidbridge" class="btn btn-ghost" target="_blank">GitHub &rarr;</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ===== THESIS ===== -->
+  <section class="section" id="thesis">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-number">01</span>
+        <h2>The Research Question</h2>
+      </div>
+      <div class="thesis-grid">
+        <div class="thesis-main">
+          <p class="lead">When the U.S. Treasury issues large volumes of debt and end-investor demand is weak, primary dealers must absorb the gap onto their own balance sheets. We call this the <em>bridge</em> function&mdash;temporary warehousing of supply until it can be distributed to final holders.</p>
+          <p>This project builds an 846-week auction-week panel (2010&ndash;2026) from five public data sources to measure this intermediation channel. We identify supply shocks from pre-auction announcements and trace their impact on dealer inventories using local projections with HAC inference.</p>
+          <p>The central finding: dealers absorb <strong>+$7.3 billion</strong> in inventory when announced supply exceeds historical norms&mdash;and <strong>2.4x more during quantitative tightening</strong>, when the Fed is no longer absorbing supply itself.</p>
+        </div>
+        <div class="thesis-sidebar">
+          <div class="callout">
+            <h3>Observable Signatures</h3>
+            <ol>
+              <li>Heavier issuance or clustered refunding supply</li>
+              <li>Weaker auction metrics or higher dealer awards</li>
+              <li>Larger dealer positions and financing usage</li>
+              <li>Persistence followed by normalization of inventory</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== KEY FINDINGS ===== -->
+  <section class="section section-dark" id="findings">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-number">02</span>
+        <h2>Key Findings</h2>
+      </div>
+
+      <!-- Finding 1: LP IRF -->
+      <div class="finding-card">
+        <div class="finding-text">
+          <h3>Supply Shocks Drive Immediate Dealer Accumulation</h3>
+          <p>When announced Treasury supply exceeds its historical 75th percentile, dealers accumulate <strong>+$7.3 billion</strong> in inventory in the same week (p&lt;0.001). The shock is identified from pre-auction information only&mdash;offering amounts known before the auction clears.</p>
+          <p>The impulse response is front-loaded: most absorption happens at horizon 0, with partial reversal over subsequent weeks as dealers distribute to end-investors.</p>
+          <div class="stat-row">
+            <div class="stat"><span class="stat-value" id="lp-h0-full"></span><span class="stat-label">$M at h=0 (full sample)</span></div>
+            <div class="stat"><span class="stat-value accent-red" id="lp-h0-qt"></span><span class="stat-label">$M at h=0 (QT period)</span></div>
+            <div class="stat"><span class="stat-value accent-green" id="lp-h0-nonqt"></span><span class="stat-label">$M at h=0 (non-QT)</span></div>
+          </div>
+        </div>
+        <div class="finding-chart">
+          <div id="chart-lp-irf"></div>
+        </div>
+      </div>
+
+      <!-- Finding 2: QT Amplification -->
+      <div class="finding-card finding-card-reverse">
+        <div class="finding-text">
+          <h3>Quantitative Tightening Amplifies the Bridge Effect 2.5x</h3>
+          <p>During QT periods (Oct 2017&ndash;Sep 2019, Jun 2022&ndash;present), the supply-shock response is <strong>2.4 times larger</strong> than outside QT. When the Fed is shrinking its balance sheet, dealers must absorb supply that the Fed would otherwise have purchased.</p>
+          <p>This is identified via an interaction term (shock &times; QT regime) on the full contiguous panel, with the total QT effect computed via the delta method. QT periods are defined from Fed announcement dates, not realized balance-sheet changes.</p>
+        </div>
+        <div class="finding-chart">
+          <div id="chart-lp-regime"></div>
+        </div>
+      </div>
+
+      <!-- Finding 3: Supply vs Dealer Share -->
+      <div class="finding-card">
+        <div class="finding-text">
+          <h3>Larger Auctions Attract More End-Investors</h3>
+          <p>Weekly supply volume and dealer allotment share are <strong>strongly negatively correlated (r&nbsp;=&nbsp;&minus;0.82)</strong>. This inverts the naive hypothesis: bigger auction weeks bring in more institutional investors, so dealers take a smaller percentage&mdash;even as they absorb more in absolute terms.</p>
+          <p>Dealer share has declined secularly from <span class="hl-blue">74%</span> (2013) to <span class="hl-blue">36%</span> (2026), reflecting the growth of investment fund and foreign participation.</p>
+        </div>
+        <div class="finding-chart">
+          <div id="chart-scatter"></div>
+        </div>
+      </div>
+
+      <!-- Finding 4: Maturity Structure -->
+      <div class="finding-card finding-card-reverse">
+        <div class="finding-text">
+          <h3>Dealers Absorb Most at the Short End</h3>
+          <p>Dealer absorption follows a clear maturity gradient: <strong>62% of Bills</strong>, 38% of short coupons (2&ndash;3Y), 30% of belly (5&ndash;7Y), 27% of long bonds (10&ndash;30Y), and just 24% of TIPS.</p>
+          <p>This is consistent with dealers acting as short-duration warehouses with high turnover. The maturity-bucket panel with bucket and week fixed effects confirms within-week cross-sectional variation in absorption patterns.</p>
+        </div>
+        <div class="finding-chart">
+          <div id="chart-maturity"></div>
+        </div>
+      </div>
+
+      <!-- Finding 5: Refunding -->
+      <div class="finding-card">
+        <div class="finding-text">
+          <h3>Refunding Weeks Show Clear Inventory Spikes</h3>
+          <p>Quarterly refunding weeks (containing 10Y + 30Y package) show <strong>+$10.4B inventory change</strong> vs &minus;$1.8B in ordinary weeks (p&lt;0.001, Welch's t-test). Refunding weeks also have 39% higher supply but lower bid-to-cover (2.99 vs 3.21).</p>
+        </div>
+        <div class="finding-chart">
+          <div id="chart-refunding"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== INTERACTIVE TIMELINE ===== -->
+  <section class="section" id="timeline">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-number">03</span>
+        <h2>Supply &amp; Dealer Activity Over Time</h2>
+      </div>
+      <p class="lead">Explore the full 2013&ndash;2026 weekly time series. Bridge episodes (red markers) cluster during periods of heavy supply and stress. Hover for details, drag to zoom.</p>
+      <div id="chart-timeseries" class="chart-full"></div>
+      <div class="chart-toggle-row">
+        <button class="chart-btn active" data-series="supply">Weekly Supply</button>
+        <button class="chart-btn" data-series="inventory">Dealer Inventory</button>
+        <button class="chart-btn" data-series="dealer_share">Dealer Share</button>
+        <button class="chart-btn" data-series="soma">SOMA vs Dealers</button>
+        <button class="chart-btn" data-series="btc">Bid-to-Cover</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== METHODS ===== -->
+  <section class="section section-dark" id="methods">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-number">04</span>
+        <h2>Methodology</h2>
+      </div>
+      <div class="method-grid">
+        <div class="method-card">
+          <div class="method-icon">LP</div>
+          <h3>Local Projections</h3>
+          <p>Jord&agrave;-style local projections estimate the dynamic response of cumulative dealer inventory change to ex ante supply shocks at horizons h&nbsp;=&nbsp;0&hellip;12 weeks.</p>
+          <div class="method-spec"><code>cum_&Delta;inv<sub>t,t+h</sub> = &alpha;<sub>h</sub> + &beta;<sub>h</sub>&middot;shock<sub>t</sub> + &theta;<sub>h</sub>&middot;shock<sub>t</sub>&times;soft_demand<sub>t-1</sub> + &Gamma;<sub>h</sub>&middot;X<sub>t-1</sub> + u<sub>t+h</sub></code></div>
+          <ul class="method-details">
+            <li><strong>Shock:</strong> Announced supply &gt; expanding p75 (pre-auction only)</li>
+            <li><strong>Controls:</strong> All lagged one week (supply, dealer share, trend, SOMA change)</li>
+            <li><strong>Inference:</strong> HAC (Newey-West) via statsmodels, bandwidth = h+1</li>
+            <li><strong>Regimes:</strong> Interaction shock &times; QT (announcement-dated), delta method for total effect</li>
+            <li><strong>Contiguity:</strong> Only includes horizons where t+h is exactly h weeks after t</li>
+          </ul>
+        </div>
+        <div class="method-card">
+          <div class="method-icon">FE</div>
+          <h3>Panel Fixed Effects</h3>
+          <p>Maturity-bucket panel with bucket and week fixed effects, exploiting within-week cross-sectional variation across the yield curve.</p>
+          <div class="method-spec"><code>&Delta;position<sub>b,t</sub> = &alpha;<sub>b</sub> + &tau;<sub>t</sub> + &beta;&middot;supply<sub>b,t</sub> + &theta;&middot;supply &times; soft_demand<sub>b,t-1</sub> + &epsilon;<sub>b,t</sub></code></div>
+          <ul class="method-details">
+            <li><strong>Panel:</strong> Balanced 6-bucket &times; 675-week grid (4,050 observations)</li>
+            <li><strong>Buckets:</strong> Bills, short coupon (2&ndash;3Y), belly (5&ndash;7Y), long (10&ndash;30Y), TIPS, FRN</li>
+            <li><strong>Inference:</strong> Entity-clustered SEs + Driscoll-Kraay robustness</li>
+          </ul>
+        </div>
+        <div class="method-card">
+          <div class="method-icon">OLS</div>
+          <h3>Extended OLS Regressions</h3>
+          <p>Descriptive OLS with HC1 robust standard errors. Extended specification includes SOMA changes, bank holdings, and time trend as controls.</p>
+          <ul class="method-details">
+            <li><strong>R&sup2; = 0.176</strong> (extended specification, n = 673)</li>
+            <li><strong>Refunding effect:</strong> +$5.5B inventory (p = 0.003)</li>
+            <li><strong>SOMA effect:</strong> Fed buying $1B reduces dealer inventory by $82M</li>
+            <li><strong>Subsample splits:</strong> Pre/post-2020, QT/non-QT, refunding/ordinary</li>
+          </ul>
+        </div>
+        <div class="method-card">
+          <div class="method-icon">Z</div>
+          <h3>Bridge Episode Detection</h3>
+          <p>Bridge episodes flag weeks of unusually large dealer absorption using only backward-looking information.</p>
+          <ul class="method-details">
+            <li><strong>Heavy supply:</strong> Awarded amount &gt; 52-week rolling median</li>
+            <li><strong>Positive accumulation:</strong> Inventory change &gt; 0</li>
+            <li><strong>Unusual size:</strong> Z-score &gt; 1 on trailing 13-week window</li>
+            <li><strong>Result:</strong> 85 episodes across 675 dealer-observed weeks (12.6%)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== REGRESSION TABLE ===== -->
+  <section class="section" id="regression">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-number">05</span>
+        <h2>Regression Results</h2>
+      </div>
+      <p class="lead">Extended bridge regression with HC1 heteroskedasticity-robust standard errors (n&nbsp;=&nbsp;673, R&sup2;&nbsp;=&nbsp;0.176). Dependent variable: weekly dealer inventory change ($M).</p>
+      <div class="table-wrapper">
+        <table class="data-table" id="reg-table">
+          <thead>
+            <tr><th>Variable</th><th>Coefficient</th><th>Std. Error</th><th>t-stat</th><th>p-value</th><th></th></tr>
+          </thead>
+          <tbody id="reg-table-body"></tbody>
+        </table>
+      </div>
+      <p class="table-note">*** p&lt;0.001, ** p&lt;0.01, * p&lt;0.05. HC1 robust standard errors. All monetary values in millions USD.</p>
+    </div>
+  </section>
+
+  <!-- ===== DATA SOURCES ===== -->
+  <section class="section section-dark" id="data">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-number">06</span>
+        <h2>Data Sources</h2>
+      </div>
+      <p class="lead">All data is publicly available from U.S. federal agencies. The pipeline fetches, harmonizes, and merges five sources into an 846-week auction-week panel with 33 columns.</p>
+      <div class="source-grid" id="source-grid"></div>
+      <div class="pipeline-flow">
+        <div class="pipe-step">Fetch<br><span class="pipe-detail">5 public APIs</span></div>
+        <div class="pipe-arrow">&rarr;</div>
+        <div class="pipe-step">Harmonize<br><span class="pipe-detail">CUSIP merge, lag alignment</span></div>
+        <div class="pipe-arrow">&rarr;</div>
+        <div class="pipe-step">Panel<br><span class="pipe-detail">846 weeks &times; 33 cols</span></div>
+        <div class="pipe-arrow">&rarr;</div>
+        <div class="pipe-step">Metrics<br><span class="pipe-detail">Bridge episodes, z-scores</span></div>
+        <div class="pipe-arrow">&rarr;</div>
+        <div class="pipe-step">Analysis<br><span class="pipe-detail">LP, FE, persistence</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== ANNUAL TABLE ===== -->
+  <section class="section" id="annual">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-number">07</span>
+        <h2>Annual Summary</h2>
+      </div>
+      <p class="lead">Treasury issuance has grown from $5.9T (2013) to over $30T annually (2025), while dealer allotment share has fallen from 74% to 36%. Bridge episodes are becoming more frequent and larger.</p>
+      <div id="chart-annual" class="chart-full"></div>
+      <div class="table-wrapper">
+        <table class="data-table" id="annual-table">
+          <thead>
+            <tr><th>Year</th><th>Auctions</th><th>Awarded ($B)</th><th>Dealer Share</th><th>Avg Inventory ($M)</th><th>Bridge Episodes</th></tr>
+          </thead>
+          <tbody id="annual-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== STRESS & ADDITIONAL ===== -->
+  <section class="section section-dark" id="stress">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-number">08</span>
+        <h2>Stress Regimes &amp; Additional Analysis</h2>
+      </div>
+      <div class="two-col">
+        <div>
+          <h3>Bridge Episode Rate by Regime</h3>
+          <p>Risk-off periods (high auction tails) show the highest bridge episode frequency at 17.0% vs 11.2% baseline. QT periods identified from Fed announcement dates (Jun 2017, May 2022).</p>
+          <div id="chart-stress"></div>
+        </div>
+        <div>
+          <h3>Persistence of Inventory Accumulation</h3>
+          <p>After bridge episodes, excess detrended inventory decays with a half-life that is now estimated on abnormal inventory (removing the secular $98B&rarr;$500B trend). The detrended R&sup2; is substantially higher than the raw estimate.</p>
+          <div id="chart-persistence"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <h4>BidBridge</h4>
+          <p>Primary dealer intermediation in Treasury markets. Built with public data, reproducible methods, and transparent code.</p>
+          <a href="https://github.com/smkwray/bidbridge" class="btn btn-outline" style="margin-top:1rem" target="_blank">View on GitHub &rarr;</a>
+        </div>
+        <div>
+          <h4>CLI Commands</h4>
+          <ul class="footer-list">
+            <li><code>bidbridge fetch</code> &mdash; download all sources</li>
+            <li><code>bidbridge build-panel</code> &mdash; construct panel</li>
+            <li><code>bidbridge analyze</code> &mdash; generate outputs</li>
+            <li><code>bidbridge lp</code> &mdash; local projections</li>
+            <li><code>bidbridge panel-fe</code> &mdash; panel regressions</li>
+          </ul>
+        </div>
+        <div>
+          <h4>Stack</h4>
+          <ul class="footer-list">
+            <li>Python 3.11 + pandas</li>
+            <li>statsmodels + linearmodels</li>
+            <li>scikit-learn</li>
+            <li>Plotly.js (this site)</li>
+            <li>5 federal data APIs</li>
+          </ul>
+        </div>
+      </div>
+      <p class="footer-note">Data through March 2026 &middot; 846 weeks &middot; 33 columns &middot; 5 sources &middot; 29 tests passing &middot; <a href="https://github.com/smkwray/bidbridge">github.com/smkwray/bidbridge</a></p>
+    </div>
+  </footer>
+
+  <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme"><span class="theme-icon">&#9790;</span></button>
+
+  <script src="app.js"></script>
+</body>
+</html>

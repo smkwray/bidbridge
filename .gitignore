@@ -1,0 +1,33 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.DS_Store
+.env
+.venv/
+.ipynb_checkpoints/
+
+# Orchestration framework (local only)
+do/
+
+# Logs
+logs/
+
+# Data artifacts
+data/raw/**
+data/interim/**
+data/processed/**
+data/external/**
+!data/raw/.gitkeep
+!data/interim/.gitkeep
+!data/processed/.gitkeep
+!data/external/.gitkeep
+
+# Output artifacts
+outputs/figures/**
+outputs/tables/**
+!outputs/figures/.gitkeep
+!outputs/tables/.gitkeep
+bidbridge.egg-info/
