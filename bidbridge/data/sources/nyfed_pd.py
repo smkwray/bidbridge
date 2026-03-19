@@ -153,21 +153,23 @@ def fetch_primary_dealer_statistics(
         bills = vals.get("PDPOSGS-B")
 
         # Sum coupon buckets for total coupon positions.
-        # Require ALL bands present — a missing band would silently
-        # understate the aggregate.
+        # This aggregate tolerates missing bands (pre-2022 series breaks
+        # lack G11L21 and G21 but have G11 combined).  The strict
+        # all-or-nothing rule is applied per-bucket in panel_fe.py where
+        # partial data would create bias.
         coupon_keys = [k for k in POSITION_KEYS if k.startswith("PDPOSGSC-")]
         coupon_vals = [vals.get(k) for k in coupon_keys]
         coupon_total = (
-            sum(coupon_vals)
-            if all(v is not None for v in coupon_vals)
+            sum(v for v in coupon_vals if v is not None)
+            if any(v is not None for v in coupon_vals)
             else None
         )
 
-        # Sum TIPS (same all-or-nothing rule)
+        # Sum TIPS (same tolerant rule for the aggregate)
         tips_vals = [vals.get(k) for k in TIPS_KEYS]
         tips_total = (
-            sum(tips_vals)
-            if all(v is not None for v in tips_vals)
+            sum(v for v in tips_vals if v is not None)
+            if any(v is not None for v in tips_vals)
             else None
         )
 

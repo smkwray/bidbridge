@@ -24,7 +24,7 @@ Weekly supply volume and dealer allotment share have a correlation of **r = -0.8
 
 ### Maturity gradient in dealer absorption
 
-Dealer absorption follows a monotonic maturity gradient: **62% of Bills**, 38% of short coupons (2--3Y), 30% of belly coupons (5--7Y), 27% of long bonds (10--30Y), and just 24% of TIPS. This is consistent with dealers acting as short-duration warehouses with high turnover -- they absorb the most where secondary market liquidity is deepest and holding periods are shortest. Confirmed by maturity-bucket panel FE with bucket and week fixed effects on a balanced 6-bucket x 675-week panel using directly observed NY Fed position data by remaining-maturity band (97.6% sample retention).
+Dealer absorption follows a monotonic maturity gradient: **62% of Bills**, 38% of short coupons (2--3Y), 30% of belly coupons (5--7Y), 27% of long bonds (10--30Y), and just 24% of TIPS. This is consistent with dealers acting as short-duration warehouses with high turnover -- they absorb the most where secondary market liquidity is deepest and holding periods are shortest. Confirmed by maturity-bucket panel FE with bucket and week fixed effects on a balanced 6-bucket x 675-week panel using directly observed NY Fed position data by remaining-maturity band (n = 2,584 in estimation).
 
 ### Refunding weeks drive concentrated inventory accumulation
 

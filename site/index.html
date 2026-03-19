@@ -177,7 +177,7 @@
           <p>Maturity-bucket panel with bucket and week fixed effects, exploiting within-week cross-sectional variation across the yield curve.</p>
           <div class="method-spec"><code>&Delta;position<sub>b,t</sub> = &alpha;<sub>b</sub> + &tau;<sub>t</sub> + &beta;&middot;supply<sub>b,t</sub> + &theta;&middot;supply &times; soft_demand<sub>b,t-1</sub> + &epsilon;<sub>b,t</sub></code></div>
           <ul class="method-details">
-            <li><strong>Panel:</strong> Balanced 6-bucket &times; 675-week grid (4,050 obs, 97.6% retention) using directly observed NY Fed maturity bands</li>
+            <li><strong>Panel:</strong> Balanced 6-bucket &times; 675-week grid using directly observed NY Fed maturity bands (n&nbsp;=&nbsp;2,584 in estimation)</li>
             <li><strong>Buckets:</strong> Bills, short coupon (2&ndash;3Y), belly (5&ndash;7Y), long (10&ndash;30Y), TIPS, FRN</li>
             <li><strong>Inference:</strong> Entity-clustered SEs + Driscoll-Kraay robustness</li>
           </ul>

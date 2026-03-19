@@ -357,14 +357,6 @@ def run_bucket_fe_regression(panel: pd.DataFrame) -> dict[str, object]:
     # under cross-sectional and temporal dependence regardless of cluster
     # count.
 
-    _sample_info = {
-        "n_theoretical": n_theoretical,
-        "n_actual": n_actual,
-        "pct_retained": round(100 * n_actual / n_theoretical, 1) if n_theoretical else 0,
-        "n_weeks": n_weeks,
-        "n_buckets": n_buckets,
-    }
-
     # Attempt to use linearmodels for proper panel FE estimation
     try:
         results = _run_with_linearmodels(df)
@@ -373,6 +365,24 @@ def run_bucket_fe_regression(panel: pd.DataFrame) -> dict[str, object]:
             "linearmodels failed (%s), falling back to statsmodels.", exc
         )
         results = _run_with_statsmodels(df)
+
+    # Report actual estimation n from the model (linearmodels may drop
+    # additional rows with missing lagged variables beyond our dropna).
+    twoway = results.get("twoway_fe")
+    n_estimated = _extract_nobs(twoway) if twoway else n_actual
+
+    _sample_info = {
+        "n_theoretical": n_theoretical,
+        "n_after_dropna": n_actual,
+        "n_estimated": n_estimated,
+        "pct_retained": round(100 * n_estimated / n_theoretical, 1) if n_theoretical else 0,
+        "n_weeks": n_weeks,
+        "n_buckets": n_buckets,
+    }
+    logger.info(
+        "Panel FE sample: %d theoretical -> %d after dropna -> %d in estimation (%.1f%%)",
+        n_theoretical, n_actual, n_estimated, _sample_info["pct_retained"],
+    )
 
     results["_sample_info"] = _sample_info
     return results
