@@ -8,7 +8,7 @@ from pathlib import Path
 from .config import load_sources_config, load_study_config
 from .data.registry import get_source_registry
 from .demo import build_demo_outputs, write_demo_data
-from .paths import CODEX_DIR, ROOT, ensure_project_directories
+from .paths import ROOT, ensure_project_directories
 
 
 def _doctor() -> int:
@@ -20,7 +20,6 @@ def _doctor() -> int:
         ROOT / "configs" / "study.yml",
         ROOT / "configs" / "sources.yml",
         ROOT / "docs" / "plan.md",
-        ROOT / "codex" / "tasks.json",
     ]
     missing = [path for path in required if not path.exists()]
     print(f"repo_root={ROOT}")
@@ -44,13 +43,6 @@ def _list_sources() -> int:
 
 def _show_config(name: str) -> int:
     payload = load_study_config() if name == "study" else load_sources_config()
-    print(json.dumps(payload, indent=2))
-    return 0
-
-
-def _show_tasks() -> int:
-    tasks_path = CODEX_DIR / "tasks.json"
-    payload = json.loads(tasks_path.read_text(encoding="utf-8"))
     print(json.dumps(payload, indent=2))
     return 0
 
@@ -209,7 +201,6 @@ def main(argv: list[str] | None = None) -> int:
     config_parser = subparsers.add_parser("show-config")
     config_parser.add_argument("name", choices=["study", "sources"])
 
-    subparsers.add_parser("show-tasks")
     subparsers.add_parser("demo-data")
     subparsers.add_parser("demo-panel")
 
@@ -258,8 +249,6 @@ def main(argv: list[str] | None = None) -> int:
         return _list_sources()
     if args.command == "show-config":
         return _show_config(args.name)
-    if args.command == "show-tasks":
-        return _show_tasks()
     if args.command == "demo-data":
         outputs = write_demo_data()
         for key, value in outputs.items():

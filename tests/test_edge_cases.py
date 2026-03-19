@@ -231,10 +231,10 @@ class TestStressFlagConsecutiveDecline:
     """qt_period should be True only after 4+ consecutive weeks of SOMA decline."""
 
     def test_qt_period_announcement_dates(self):
-        """QT period is now based on announcement dates, not consecutive SOMA declines.
+        """QT period is based on announcement dates.
 
         QT1: 2017-10-01 to 2019-09-30
-        QT2: 2022-06-01 to present
+        QT2: 2022-06-01 to 2025-12-01
         """
         from bidbridge.features.stress_flags import add_stress_flags
 
@@ -245,13 +245,16 @@ class TestStressFlagConsecutiveDecline:
             "2019-10-07",  # After QT1 -> False
             "2022-05-30",  # Before QT2 -> False
             "2022-06-06",  # Inside QT2 -> True
-            "2025-01-06",  # Inside QT2 (ongoing) -> True
+            "2025-01-06",  # Inside QT2 -> True
+            "2025-12-01",  # Last day of QT2 -> True
+            "2025-12-08",  # After QT2 -> False
+            "2026-01-05",  # Well after QT2 -> False
         ])
 
         panel = pd.DataFrame({"week_start": weeks})
         result = add_stress_flags(panel)
 
-        expected = [False, True, True, False, False, True, True]
+        expected = [False, True, True, False, False, True, True, True, False, False]
         for i, exp in enumerate(expected):
             actual = bool(result.loc[i, "qt_period"])
             assert actual == exp, (
@@ -260,7 +263,98 @@ class TestStressFlagConsecutiveDecline:
 
 
 # ---------------------------------------------------------------------------
-# 8.  Empty fetcher result — far-future start_date
+# 8.  Panel FE — granular band mapping
+# ---------------------------------------------------------------------------
+
+class TestPanelFEGranularMapping:
+    """build_bucket_outcomes should use direct NY Fed band mapping when
+    granular columns are present, producing non-NaN positions even in
+    zero-auction weeks and propagating NaN when any band is missing."""
+
+    def _make_dealer_stats(self, weeks, nan_band_week=None):
+        """Synthetic dealer stats with granular coupon bands."""
+        rows = []
+        for w in weeks:
+            row = {
+                "week_start": w,
+                "pd_bills_position": 80000.0,
+                "pd_coupon_le2y": 15000.0,
+                "pd_coupon_2_3y": 15000.0,
+                "pd_coupon_3_6y": 20000.0,
+                "pd_coupon_6_7y": 10000.0,
+                "pd_coupon_7_11y": 15000.0,
+                "pd_coupon_11_21y": 15000.0,
+                "pd_coupon_gt21y": 10000.0,
+                "pd_tips_position": 10000.0,
+                "pd_frn_position": 5000.0,
+            }
+            if nan_band_week is not None and w == nan_band_week:
+                row["pd_coupon_le2y"] = np.nan  # partial NaN
+            rows.append(row)
+        return pd.DataFrame(rows)
+
+    def _make_maturity_panel(self, weeks):
+        """Synthetic maturity panel — only one auction in week 1."""
+        # Week 1: one belly_coupon auction.  Week 2: no auctions at all.
+        return pd.DataFrame({
+            "week_start": [weeks[0]],
+            "maturity_bucket": ["belly_coupon"],
+            "announced_amount": [50000.0],
+            "awarded_amount": [48000.0],
+            "dealer_share": [0.40],
+        })
+
+    def test_granular_produces_nonnan_position_zero_auction_week(self):
+        """Coupon buckets should have valid positions even with no auctions."""
+        from bidbridge.analysis.panel_fe import build_bucket_outcomes
+
+        weeks = pd.to_datetime(["2025-01-06", "2025-01-13"])
+        ds = self._make_dealer_stats(weeks)
+        mp = self._make_maturity_panel(weeks)
+
+        result = build_bucket_outcomes(mp, ds)
+
+        # Week 2 has no auctions but should still have coupon positions
+        w2 = result[result["week_start"] == pd.Timestamp("2025-01-13")]
+        for bucket in ["short_coupon", "belly_coupon", "long_coupon"]:
+            pos = w2.loc[w2["maturity_bucket"] == bucket, "bucket_position"]
+            assert len(pos) == 1, f"Missing row for {bucket} in week 2"
+            assert pd.notna(pos.values[0]), (
+                f"{bucket} position should be non-NaN in zero-auction week"
+            )
+
+    def test_partial_nan_band_propagates_nan(self):
+        """If one coupon band is NaN, the bucket position should be NaN."""
+        from bidbridge.analysis.panel_fe import build_bucket_outcomes
+
+        weeks = pd.to_datetime(["2025-01-06", "2025-01-13"])
+        ds = self._make_dealer_stats(weeks, nan_band_week=weeks[0])
+        mp = self._make_maturity_panel(weeks)
+
+        result = build_bucket_outcomes(mp, ds)
+
+        # short_coupon in week 1: pd_coupon_le2y is NaN → position should be NaN
+        w1_short = result[
+            (result["week_start"] == pd.Timestamp("2025-01-06"))
+            & (result["maturity_bucket"] == "short_coupon")
+        ]
+        assert len(w1_short) == 1
+        assert pd.isna(w1_short["bucket_position"].values[0]), (
+            "short_coupon position should be NaN when one band is missing"
+        )
+
+        # belly_coupon in week 1: all bands present → position should be valid
+        w1_belly = result[
+            (result["week_start"] == pd.Timestamp("2025-01-06"))
+            & (result["maturity_bucket"] == "belly_coupon")
+        ]
+        assert pd.notna(w1_belly["bucket_position"].values[0]), (
+            "belly_coupon position should be non-NaN when its bands are complete"
+        )
+
+
+# ---------------------------------------------------------------------------
+# 9.  Empty fetcher result — far-future start_date
 # ---------------------------------------------------------------------------
 
 class TestEmptyFetcherResult:

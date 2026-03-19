@@ -9,8 +9,10 @@ sample:
   end_date: null
   week_definition: monday_start
   note: >
-    Monday-start weekly aggregation is the seed default. Codex should verify source-specific
-    reporting calendars before locking the production auction-week rule.
+    Monday-start weekly aggregation. NY Fed PD positions are Wednesday as-of
+    snapshots, so Thu/Fri auctions (T+1 settlement) are not reflected in the
+    same week's position change. This creates attenuation bias in panel_fe
+    estimates (conservative). A Thursday-start robustness check is planned.
 
 instruments:
   groups:

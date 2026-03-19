@@ -16,5 +16,5 @@ from pathlib import Path
 
 def fetch_trace_treasury(output_dir: Path) -> Path:
     raise NotImplementedError(
-        "Codex milestone M1 may optionally implement TRACE Treasury aggregate ingestion."
+        "Milestone M1 may optionally implement TRACE Treasury aggregate ingestion."
     )

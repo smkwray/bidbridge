@@ -14,7 +14,6 @@ def find_repo_root(start: Path | None = None) -> Path:
 ROOT = find_repo_root()
 CONFIGS_DIR = ROOT / "configs"
 DOCS_DIR = ROOT / "docs"
-CODEX_DIR = ROOT / "codex"
 DATA_DIR = ROOT / "data"
 RAW_DIR = DATA_DIR / "raw"
 INTERIM_DIR = DATA_DIR / "interim"

@@ -40,10 +40,12 @@ _EXPANDING_MIN_PERIODS = 13
 # QT1: Announced 2017-06-14 (https://www.federalreserve.gov/newsevents/pressreleases/monetary20170614a.htm)
 #       Began Oct 2017, ended Sept 2019 when the Fed resumed purchases.
 # QT2: Announced 2022-05-04 (https://www.federalreserve.gov/newsevents/pressreleases/monetary20220504a.htm)
-#       Began June 2022, still ongoing.
+#       Began June 2022, ended December 2025.
+#       FOMC announced 2025-10-29 that balance-sheet runoff ceases 2025-12-01.
+#       Source: https://www.federalreserve.gov/monetarypolicy/fomcminutes20251210.htm
 _QT_RANGES: list[tuple[str, str | None]] = [
     ("2017-10-01", "2019-09-30"),   # QT1
-    ("2022-06-01", None),            # QT2 – ongoing
+    ("2022-06-01", "2025-12-01"),   # QT2
 ]
 
 

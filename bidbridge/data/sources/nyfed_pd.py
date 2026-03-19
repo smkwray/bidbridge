@@ -31,8 +31,9 @@ POSITION_KEYS = [
     "PDPOSGSC-G3L6",    # Coupons 3-6yr
     "PDPOSGSC-G6L7",    # Coupons 6-7yr
     "PDPOSGSC-G7L11",   # Coupons 7-11yr
-    "PDPOSGSC-G11L21",  # Coupons 11-21yr
-    "PDPOSGSC-G21",     # Coupons >21yr
+    "PDPOSGSC-G11",     # Coupons >11yr (combined, pre-2022 series breaks)
+    "PDPOSGSC-G11L21",  # Coupons 11-21yr (split, SBN2022+ only)
+    "PDPOSGSC-G21",     # Coupons >21yr (split, SBN2022+ only)
     "PDPOSGS-BFRN",     # FRN positions
 ]
 
@@ -151,18 +152,24 @@ def fetch_primary_dealer_statistics(
         total_treasury = vals.get("PDPOSGST-TOT")
         bills = vals.get("PDPOSGS-B")
 
-        # Sum coupon buckets for total coupon positions
+        # Sum coupon buckets for total coupon positions.
+        # Require ALL bands present — a missing band would silently
+        # understate the aggregate.
         coupon_keys = [k for k in POSITION_KEYS if k.startswith("PDPOSGSC-")]
         coupon_vals = [vals.get(k) for k in coupon_keys]
-        coupon_total = sum(v for v in coupon_vals if v is not None) if any(
-            v is not None for v in coupon_vals
-        ) else None
+        coupon_total = (
+            sum(coupon_vals)
+            if all(v is not None for v in coupon_vals)
+            else None
+        )
 
-        # Sum TIPS
+        # Sum TIPS (same all-or-nothing rule)
         tips_vals = [vals.get(k) for k in TIPS_KEYS]
-        tips_total = sum(v for v in tips_vals if v is not None) if any(
-            v is not None for v in tips_vals
-        ) else None
+        tips_total = (
+            sum(tips_vals)
+            if all(v is not None for v in tips_vals)
+            else None
+        )
 
         frn = vals.get("PDPOSGS-BFRN")
 
@@ -172,6 +179,16 @@ def fetch_primary_dealer_statistics(
         if repo is not None and reverse_repo is not None:
             net_financing = repo - reverse_repo
 
+        # Individual coupon maturity bands (by remaining maturity)
+        coupon_le2y = vals.get("PDPOSGSC-L2")
+        coupon_2_3y = vals.get("PDPOSGSC-G2L3")
+        coupon_3_6y = vals.get("PDPOSGSC-G3L6")
+        coupon_6_7y = vals.get("PDPOSGSC-G6L7")
+        coupon_7_11y = vals.get("PDPOSGSC-G7L11")
+        coupon_gt11y = vals.get("PDPOSGSC-G11")       # combined >11yr (pre-2022)
+        coupon_11_21y = vals.get("PDPOSGSC-G11L21")    # split 11-21yr (2022+)
+        coupon_gt21y = vals.get("PDPOSGSC-G21")        # split >21yr (2022+)
+
         output_rows.append({
             "as_of_date": date_str,
             "week_start": week_start,
@@ -179,6 +196,14 @@ def fetch_primary_dealer_statistics(
             "pd_treasury_inventory": total_treasury,
             "pd_bills_position": bills,
             "pd_coupon_position": coupon_total,
+            "pd_coupon_le2y": coupon_le2y,
+            "pd_coupon_2_3y": coupon_2_3y,
+            "pd_coupon_3_6y": coupon_3_6y,
+            "pd_coupon_6_7y": coupon_6_7y,
+            "pd_coupon_7_11y": coupon_7_11y,
+            "pd_coupon_gt11y": coupon_gt11y,
+            "pd_coupon_11_21y": coupon_11_21y,
+            "pd_coupon_gt21y": coupon_gt21y,
             "pd_tips_position": tips_total,
             "pd_frn_position": frn,
             "pd_repo_treasury": repo,
@@ -189,6 +214,9 @@ def fetch_primary_dealer_statistics(
     _EXPECTED_COLUMNS = [
         "as_of_date", "week_start", "week_end",
         "pd_treasury_inventory", "pd_bills_position", "pd_coupon_position",
+        "pd_coupon_le2y", "pd_coupon_2_3y", "pd_coupon_3_6y",
+        "pd_coupon_6_7y", "pd_coupon_7_11y", "pd_coupon_gt11y",
+        "pd_coupon_11_21y", "pd_coupon_gt21y",
         "pd_tips_position", "pd_frn_position",
         "pd_repo_treasury", "pd_reverse_repo_treasury", "pd_financing_usage",
     ]

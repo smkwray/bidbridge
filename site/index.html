@@ -40,7 +40,7 @@
         <div class="thesis-main">
           <p class="lead">When the U.S. Treasury issues large volumes of debt and end-investor demand is weak, primary dealers must absorb the gap onto their own balance sheets. We call this the <em>bridge</em> function&mdash;temporary warehousing of supply until it can be distributed to final holders.</p>
           <p>This project builds an 846-week auction-week panel (2010&ndash;2026) from five public data sources to measure this intermediation channel. We identify supply shocks from pre-auction announcements and trace their impact on dealer inventories using local projections with HAC inference.</p>
-          <p>The central finding: dealers absorb <strong>+$7.3 billion</strong> in inventory when announced supply exceeds historical norms&mdash;and <strong>2.4x more during quantitative tightening</strong>, when the Fed is no longer absorbing supply itself.</p>
+          <p>The central finding: dealers absorb <strong>+$7.3 billion</strong> in inventory when announced supply exceeds historical norms&mdash;and <strong>2.1x more during quantitative tightening</strong>, when the Fed is no longer absorbing supply itself.</p>
         </div>
         <div class="thesis-sidebar">
           <div class="callout">
@@ -85,8 +85,8 @@
       <!-- Finding 2: QT Amplification -->
       <div class="finding-card finding-card-reverse">
         <div class="finding-text">
-          <h3>Quantitative Tightening Amplifies the Bridge Effect 2.5x</h3>
-          <p>During QT periods (Oct 2017&ndash;Sep 2019, Jun 2022&ndash;present), the supply-shock response is <strong>2.4 times larger</strong> than outside QT. When the Fed is shrinking its balance sheet, dealers must absorb supply that the Fed would otherwise have purchased.</p>
+          <h3>Quantitative Tightening Amplifies the Bridge Effect 2.1x</h3>
+          <p>During QT periods (Oct 2017&ndash;Sep 2019, Jun 2022&ndash;Dec 2025), the supply-shock response is <strong>2.1 times larger</strong> than outside QT. When the Fed is shrinking its balance sheet, dealers must absorb supply that the Fed would otherwise have purchased.</p>
           <p>This is identified via an interaction term (shock &times; QT regime) on the full contiguous panel, with the total QT effect computed via the delta method. QT periods are defined from Fed announcement dates, not realized balance-sheet changes.</p>
         </div>
         <div class="finding-chart">
@@ -98,8 +98,8 @@
       <div class="finding-card">
         <div class="finding-text">
           <h3>Larger Auctions Attract More End-Investors</h3>
-          <p>Weekly supply volume and dealer allotment share are <strong>strongly negatively correlated (r&nbsp;=&nbsp;&minus;0.82)</strong>. This inverts the naive hypothesis: bigger auction weeks bring in more institutional investors, so dealers take a smaller percentage&mdash;even as they absorb more in absolute terms.</p>
-          <p>Dealer share has declined secularly from <span class="hl-blue">74%</span> (2013) to <span class="hl-blue">36%</span> (2026), reflecting the growth of investment fund and foreign participation.</p>
+          <p>Weekly supply volume and dealer allotment share are <strong>strongly negatively correlated (r&nbsp;=&nbsp;&minus;0.81)</strong>. This inverts the naive hypothesis: bigger auction weeks bring in more institutional investors, so dealers take a smaller percentage&mdash;even as they absorb more in absolute terms.</p>
+          <p>Dealer share has declined secularly from <span class="hl-blue">70%</span> (2013) to <span class="hl-blue">37%</span> (2026), reflecting the growth of investment fund and foreign participation.</p>
         </div>
         <div class="finding-chart">
           <div id="chart-scatter"></div>
@@ -122,7 +122,7 @@
       <div class="finding-card">
         <div class="finding-text">
           <h3>Refunding Weeks Show Clear Inventory Spikes</h3>
-          <p>Quarterly refunding weeks (containing 10Y + 30Y package) show <strong>+$10.4B inventory change</strong> vs &minus;$1.8B in ordinary weeks (p&lt;0.001, Welch's t-test). Refunding weeks also have 39% higher supply but lower bid-to-cover (2.99 vs 3.21).</p>
+          <p>Quarterly refunding weeks (containing 10Y + 30Y package) show <strong>+$11.2B inventory change</strong> vs &minus;$0.3B in ordinary weeks (p&lt;0.001, Welch's t-test). Refunding weeks also have higher supply but lower bid-to-cover (3.02 vs 3.17).</p>
         </div>
         <div class="finding-chart">
           <div id="chart-refunding"></div>
@@ -177,7 +177,7 @@
           <p>Maturity-bucket panel with bucket and week fixed effects, exploiting within-week cross-sectional variation across the yield curve.</p>
           <div class="method-spec"><code>&Delta;position<sub>b,t</sub> = &alpha;<sub>b</sub> + &tau;<sub>t</sub> + &beta;&middot;supply<sub>b,t</sub> + &theta;&middot;supply &times; soft_demand<sub>b,t-1</sub> + &epsilon;<sub>b,t</sub></code></div>
           <ul class="method-details">
-            <li><strong>Panel:</strong> Balanced 6-bucket &times; 675-week grid (4,050 observations)</li>
+            <li><strong>Panel:</strong> Balanced 6-bucket &times; 675-week grid (4,050 obs, 97.6% retention) using directly observed NY Fed maturity bands</li>
             <li><strong>Buckets:</strong> Bills, short coupon (2&ndash;3Y), belly (5&ndash;7Y), long (10&ndash;30Y), TIPS, FRN</li>
             <li><strong>Inference:</strong> Entity-clustered SEs + Driscoll-Kraay robustness</li>
           </ul>
@@ -187,9 +187,9 @@
           <h3>Extended OLS Regressions</h3>
           <p>Descriptive OLS with HC1 robust standard errors. Extended specification includes SOMA changes, bank holdings, and time trend as controls.</p>
           <ul class="method-details">
-            <li><strong>R&sup2; = 0.176</strong> (extended specification, n = 673)</li>
-            <li><strong>Refunding effect:</strong> +$5.5B inventory (p = 0.003)</li>
-            <li><strong>SOMA effect:</strong> Fed buying $1B reduces dealer inventory by $82M</li>
+            <li><strong>R&sup2; = 0.168</strong> (extended specification, n = 673)</li>
+            <li><strong>Refunding effect:</strong> +$3.9B inventory (p = 0.099)</li>
+            <li><strong>SOMA effect:</strong> Fed buying $1B reduces dealer inventory by $92M</li>
             <li><strong>Subsample splits:</strong> Pre/post-2020, QT/non-QT, refunding/ordinary</li>
           </ul>
         </div>
@@ -215,7 +215,7 @@
         <span class="section-number">05</span>
         <h2>Regression Results</h2>
       </div>
-      <p class="lead">Extended bridge regression with HC1 heteroskedasticity-robust standard errors (n&nbsp;=&nbsp;673, R&sup2;&nbsp;=&nbsp;0.176). Dependent variable: weekly dealer inventory change ($M).</p>
+      <p class="lead">Extended bridge regression with HC1 heteroskedasticity-robust standard errors (n&nbsp;=&nbsp;673, R&sup2;&nbsp;=&nbsp;0.168). Dependent variable: weekly dealer inventory change ($M).</p>
       <div class="table-wrapper">
         <table class="data-table" id="reg-table">
           <thead>
@@ -258,7 +258,7 @@
         <span class="section-number">07</span>
         <h2>Annual Summary</h2>
       </div>
-      <p class="lead">Treasury issuance has grown from $5.9T (2013) to over $30T annually (2025), while dealer allotment share has fallen from 74% to 36%. Bridge episodes are becoming more frequent and larger.</p>
+      <p class="lead">Treasury issuance has grown from $5.9T (2013) to over $30T annually (2025), while dealer allotment share has fallen from 70% to 37%. Bridge episodes are becoming more frequent and larger.</p>
       <div id="chart-annual" class="chart-full"></div>
       <div class="table-wrapper">
         <table class="data-table" id="annual-table">
@@ -281,7 +281,7 @@
       <div class="two-col">
         <div>
           <h3>Bridge Episode Rate by Regime</h3>
-          <p>Risk-off periods (high auction tails) show the highest bridge episode frequency at 17.0% vs 11.2% baseline. QT periods identified from Fed announcement dates (Jun 2017, May 2022).</p>
+          <p>Risk-off periods (high auction tails) show the highest bridge episode frequency at 17.0% vs 11.2% baseline. QT periods identified from Fed announcement dates (Oct 2017, Jun 2022, ending Dec 2025).</p>
           <div id="chart-stress"></div>
         </div>
         <div>

@@ -14,25 +14,25 @@ BidBridge builds an 846-week auction-week panel (2010-2026) from five public fed
 
 When Treasury announced supply exceeds its expanding historical 75th percentile, primary dealers accumulate **+$7.3 billion** in net Treasury inventory in the same week (p < 0.001, Newey-West HAC). The impulse response is front-loaded: most of the absorption happens at horizon 0, with partial reversal over subsequent weeks as dealers distribute holdings to end-investors through the secondary market.
 
-### Quantitative tightening amplifies the bridge effect 2.4x
+### Quantitative tightening amplifies the bridge effect 2.1x
 
-During Fed balance-sheet runoff periods (QT1: Oct 2017--Sep 2019, QT2: Jun 2022--present), the dealer inventory response to a supply shock is **+$12.2 billion** (p < 0.001) vs **+$5.0 billion** outside QT (p = 0.02). When the Fed is no longer absorbing new issuance through reinvestment, dealers must warehouse supply that would otherwise flow onto the Fed's balance sheet. Identified via shock x QT interaction on the full contiguous panel with the total effect computed via the delta method.
+During Fed balance-sheet runoff periods (QT1: Oct 2017--Sep 2019, QT2: Jun 2022--Dec 2025), the dealer inventory response to a supply shock is **+$10.9 billion** (p < 0.001) vs **+$5.2 billion** outside QT (p = 0.02). When the Fed is no longer absorbing new issuance through reinvestment, dealers must warehouse supply that would otherwise flow onto the Fed's balance sheet. Identified via shock x QT interaction on the full contiguous panel with the total effect computed via the delta method.
 
 ### Supply and dealer share are inversely correlated
 
-Weekly supply volume and dealer allotment share have a correlation of **r = -0.82**. This inverts the naive hypothesis: bigger auction weeks bring in more institutional and foreign investors, so dealers take a smaller *percentage* of allotments -- even as they absorb more in *absolute* dollar terms. Dealer share has declined secularly from 74% (2013) to 36% (2026), reflecting the structural growth of investment fund and foreign participation in Treasury auctions.
+Weekly supply volume and dealer allotment share have a correlation of **r = -0.81**. This inverts the naive hypothesis: bigger auction weeks bring in more institutional and foreign investors, so dealers take a smaller *percentage* of allotments -- even as they absorb more in *absolute* dollar terms. Dealer share has declined secularly from 70% (2013) to 37% (2026), reflecting the structural growth of investment fund and foreign participation in Treasury auctions.
 
 ### Maturity gradient in dealer absorption
 
-Dealer absorption follows a monotonic maturity gradient: **62% of Bills**, 38% of short coupons (2--3Y), 30% of belly coupons (5--7Y), 27% of long bonds (10--30Y), and just 24% of TIPS. This is consistent with dealers acting as short-duration warehouses with high turnover -- they absorb the most where secondary market liquidity is deepest and holding periods are shortest. Confirmed by maturity-bucket panel FE with bucket and week fixed effects on a balanced 6 x 675 grid.
+Dealer absorption follows a monotonic maturity gradient: **62% of Bills**, 38% of short coupons (2--3Y), 30% of belly coupons (5--7Y), 27% of long bonds (10--30Y), and just 24% of TIPS. This is consistent with dealers acting as short-duration warehouses with high turnover -- they absorb the most where secondary market liquidity is deepest and holding periods are shortest. Confirmed by maturity-bucket panel FE with bucket and week fixed effects on a balanced 6-bucket x 675-week panel using directly observed NY Fed position data by remaining-maturity band (97.6% sample retention).
 
 ### Refunding weeks drive concentrated inventory accumulation
 
-Quarterly refunding weeks (identified by the presence of both a 10-year Note and 30-year Bond auction) show an average inventory change of **+$10.4 billion** vs **-$1.8 billion** in ordinary weeks (p < 0.001, Welch's t-test). Refunding weeks carry 39% higher supply volume but weaker demand metrics: bid-to-cover of 2.99 vs 3.21 (p < 0.001). Auction tails show no significant difference (p = 0.30), suggesting price concessions are absorbed through volume rather than pricing.
+Quarterly refunding weeks (identified by the presence of both a 10-year Note and 30-year Bond auction) show an average inventory change of **+$11.2 billion** vs **-$0.3 billion** in ordinary weeks (p < 0.001, Welch's t-test). Refunding weeks carry higher supply volume but weaker demand metrics: bid-to-cover of 3.02 vs 3.17 (p = 0.006). Auction tails show marginal significance (p = 0.07), suggesting price concessions are absorbed primarily through volume rather than pricing.
 
 ### Bridge episodes cluster in stress regimes
 
-85 bridge episodes are identified using a backward-looking classification: heavy supply (rolling 52-week median), positive inventory accumulation, and a z-score > 1 on a trailing 13-week window. These cluster during **risk-off periods** (bridge rate 17.0% vs 11.2% baseline) defined by elevated auction tails, and during **QT periods** (12.0%). The extended OLS regression (R² = 0.176, n = 673) shows that each additional $1 billion of Fed purchases (SOMA) reduces dealer inventory by $82 million (p < 0.001), while each year of secular trend reduces average inventory change by $3.4 billion -- dealers are becoming more efficient distributors over time.
+85 bridge episodes are identified using a backward-looking classification: heavy supply (rolling 52-week median), positive inventory accumulation, and a z-score > 1 on a trailing 13-week window. These cluster during **risk-off periods** (bridge rate 17.0% vs 11.2% baseline) defined by elevated auction tails, and during **QT periods** (12.2% vs 12.9% baseline). The extended OLS regression (R² = 0.168, n = 673) shows that each additional $1 billion of Fed purchases (SOMA) reduces dealer inventory by $92 million (p = 0.003), while each year of secular trend reduces average inventory change by $3.1 billion -- dealers are becoming more efficient distributors over time.
 
 ## Quick Start
 
@@ -87,11 +87,11 @@ cum_inv_change(t,t+h) = alpha + beta * shock(t) + theta * shock(t) * soft_demand
 - **Controls**: All lagged one week (supply, dealer share, trend, SOMA change)
 - **Inference**: Newey-West HAC via statsmodels, bandwidth = h+1
 - **Regime effects**: Shock x QT interaction, total QT effect via delta method
-- **QT periods**: Announcement-dated (Oct 2017-Sep 2019, Jun 2022-present)
+- **QT periods**: Announcement-dated (Oct 2017-Sep 2019, Jun 2022-Dec 2025)
 
 ### Panel Fixed Effects
 
-Maturity-bucket panel with bucket and week FE on a balanced 6-bucket x 675-week grid:
+Maturity-bucket panel with bucket and week FE using directly observed NY Fed position data by remaining-maturity band:
 
 ```
 delta_position(b,t) = alpha(b) + tau(t) + beta * supply(b,t) + theta * supply * soft_demand(b,t-1) + epsilon
@@ -162,14 +162,16 @@ PYTHONDONTWRITEBYTECODE=1 ~/venvs/bidbridge/bin/python -B -m pytest tests/ -x
 
 ## Audit History
 
-The codebase has been through **4 independent audit passes** addressing:
+The codebase has been through **5 independent audit passes** addressing:
 - CUSIP reopening merge correctness
 - Forward-looking SOMA/H.8 timing (lagged 1 week)
 - NaN-as-zero masking in inventory and weighted averages
 - Endogenous LP treatment (replaced with ex ante supply shock)
 - Look-ahead thresholds (replaced with rolling/expanding windows)
 - Announcement-dated QT regimes (replacing realized SOMA declines)
-- Balanced panel FE (zero-filled non-auction weeks)
+- Mechanical endogeneity in panel FE (replaced proportional coupon split with directly observed NY Fed maturity bands)
+- QT2 end date correction (Jun 2022--Dec 2025, was open-ended)
+- Week-alignment documentation (Monday-start vs Wednesday as-of attenuation bias)
 
 ## License
 

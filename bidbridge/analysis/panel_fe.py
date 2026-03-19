@@ -17,12 +17,27 @@ The key insight: if dealers absorb supply where it lands on the curve, beta
 should be positive and significant within buckets, controlling for week-level
 shocks via week FE.
 
-Dealer position mapping (NY Fed reports aggregate coupon, not by sub-bucket):
+Dealer position mapping:
     pd_bills_position  -> bills
-    pd_coupon_position -> short_coupon + belly_coupon + long_coupon
-                          (split proportionally by awarded_amount)
+    Coupon maturity bands (by remaining maturity) -> short/belly/long buckets:
+        short_coupon = pd_coupon_le2y + pd_coupon_2_3y       (<=3yr remaining)
+        belly_coupon = pd_coupon_3_6y + pd_coupon_6_7y       (3-7yr remaining)
+        long_coupon  = pd_coupon_7_11y + pd_coupon_11_21y + pd_coupon_gt21y (>7yr)
     pd_tips_position   -> tips
     pd_frn_position    -> frns (when available)
+
+    Note: NY Fed bands are by *remaining* maturity, not original tenor. Each
+    study bucket therefore contains newly-issued securities of matching tenor
+    plus aging securities from longer tenors that have rolled down the curve.
+    This is standard in empirical Treasury research and eliminates the
+    mechanical endogeneity of the previous proportional-split approach.
+
+Timing caveat:
+    NY Fed PD positions are Wednesday as-of snapshots.  Auctions run Mon-Fri
+    with T+1 settlement.  Thu/Fri auctions may not be reflected in the same
+    week's Wednesday position.  This creates attenuation bias (beta biased
+    toward zero), making estimates conservative.  A Thursday-start week
+    robustness check would tighten alignment but is not yet implemented.
 """
 
 from __future__ import annotations
@@ -44,6 +59,28 @@ _COUPON_BUCKETS = {"short_coupon", "belly_coupon", "long_coupon"}
 
 # All recognized maturity buckets
 _ALL_BUCKETS = {"bills", "short_coupon", "belly_coupon", "long_coupon", "tips", "frns"}
+
+# Direct mapping from NY Fed coupon maturity bands to study buckets.
+# Bands are by remaining maturity; see module docstring for caveats.
+#
+# long_coupon uses split bands (11-21yr + >21yr) when available (SBN2022+),
+# falling back to the combined >11yr band (pd_coupon_gt11y) for pre-2022 data.
+_BAND_TO_BUCKET = {
+    "short_coupon": ["pd_coupon_le2y", "pd_coupon_2_3y"],
+    "belly_coupon": ["pd_coupon_3_6y", "pd_coupon_6_7y"],
+    "long_coupon": ["pd_coupon_7_11y", "pd_coupon_11_21y", "pd_coupon_gt21y"],
+}
+
+# Fallback for long_coupon when split bands are missing (pre-2022 series)
+_LONG_COUPON_FALLBACK = ["pd_coupon_7_11y", "pd_coupon_gt11y"]
+
+# Minimum columns needed to use granular path (short + belly + 7-11yr;
+# long_coupon can use either split or combined >11yr)
+_GRANULAR_MIN_COLS = [
+    "pd_coupon_le2y", "pd_coupon_2_3y",   # short_coupon
+    "pd_coupon_3_6y", "pd_coupon_6_7y",   # belly_coupon
+    "pd_coupon_7_11y",                     # long_coupon (always needed)
+]
 
 
 # ---------------------------------------------------------------------------
@@ -80,99 +117,127 @@ def build_bucket_outcomes(
     mp["week_start"] = pd.to_datetime(mp["week_start"])
     ds["week_start"] = pd.to_datetime(ds["week_start"])
 
-    # ---- Map dealer positions to maturity buckets -------------------------
-    #
-    # NY Fed reports:
-    #   pd_bills_position  -> bills
-    #   pd_coupon_position -> short_coupon + belly_coupon + long_coupon
-    #   pd_tips_position   -> tips
-    #   pd_frn_position    -> frns (often missing in early data)
-    #
-    # For coupon sub-buckets, split pd_coupon_position proportionally by
-    # awarded_amount within each week.
+    # ---- Detect whether granular coupon bands are available ---------------
+    _has_granular = all(col in ds.columns for col in _GRANULAR_MIN_COLS)
+    if not _has_granular:
+        logger.warning(
+            "Granular coupon band columns not found in dealer_stats. "
+            "Falling back to proportional split of pd_coupon_position. "
+            "Re-run `bidbridge fetch` to get granular data and eliminate "
+            "mechanical endogeneity in coupon-bucket position assignment."
+        )
 
-    # Step 1: Compute coupon bucket share weights per week
-    coupon_mask = mp["maturity_bucket"].isin(_COUPON_BUCKETS)
-    coupon_weekly = (
-        mp.loc[coupon_mask]
-        .groupby("week_start")["awarded_amount"]
-        .sum()
-        .rename("coupon_total_awarded")
-    )
-
-    mp = mp.merge(coupon_weekly, on="week_start", how="left")
-    # Recompute mask after merge to ensure alignment
-    coupon_mask = mp["maturity_bucket"].isin(_COUPON_BUCKETS)
-    mp["coupon_share_weight"] = np.where(
-        coupon_mask & (mp["coupon_total_awarded"] > 0),
-        mp["awarded_amount"] / mp["coupon_total_awarded"],
-        0.0,
-    )
-
-    # Step 2: Merge dealer stats onto each (week, bucket) row
-    ds_cols = ["week_start", "pd_bills_position", "pd_coupon_position",
-               "pd_tips_position"]
+    # ---- Step 1: Merge dealer stats onto each (week, bucket) row ---------
+    ds_cols = ["week_start", "pd_bills_position", "pd_tips_position"]
     if "pd_frn_position" in ds.columns:
         ds_cols.append("pd_frn_position")
+    if _has_granular:
+        # Include all available band columns (min set + optional split/combined)
+        for col in _GRANULAR_MIN_COLS:
+            if col not in ds_cols:
+                ds_cols.append(col)
+        for col in ["pd_coupon_11_21y", "pd_coupon_gt21y", "pd_coupon_gt11y"]:
+            if col in ds.columns and col not in ds_cols:
+                ds_cols.append(col)
+    else:
+        ds_cols.append("pd_coupon_position")
 
     # De-duplicate dealer stats by week_start (take last observation)
     ds_dedup = ds[ds_cols].drop_duplicates(subset=["week_start"], keep="last")
 
     panel = mp.merge(ds_dedup, on="week_start", how="inner")
 
-    # Step 2b: Expand to a balanced panel — every (week_start, maturity_bucket)
-    # combination gets a row so that zero-supply weeks are represented.  This
-    # restores within-week variation across all 6 buckets for the FE regression.
-    all_weeks = pd.DataFrame({"week_start": panel["week_start"].unique()})
-    all_buckets = pd.DataFrame({"maturity_bucket": panel["maturity_bucket"].unique()})
+    # ---- Step 2: Expand to a balanced panel ------------------------------
+    # Every (week_start, maturity_bucket) gets a row so that zero-supply
+    # weeks are represented for the FE regression.
+    # Use the union of weeks from maturity_panel and dealer_stats so that
+    # weeks with dealer data but no auctions are not silently dropped.
+    all_weeks_set = set(panel["week_start"].unique()) | set(ds_dedup["week_start"].unique())
+    all_weeks = pd.DataFrame({"week_start": sorted(all_weeks_set)})
+    all_buckets = pd.DataFrame({"maturity_bucket": list(_ALL_BUCKETS)})
     balanced = all_weeks.merge(all_buckets, how="cross")
     panel = balanced.merge(panel, on=["week_start", "maturity_bucket"], how="left")
     panel["awarded_amount"] = panel["awarded_amount"].fillna(0)
     panel["announced_amount"] = panel["announced_amount"].fillna(0)
     # dealer_share is left as NaN for non-auction weeks (no auction -> no share)
 
-    # Re-merge dealer stats for rows added by balancing (they have week_start
-    # but may lack the dealer-stat columns after the left join above).
+    # Re-merge dealer stats for rows added by balancing
     ds_merge_cols = [c for c in ds_dedup.columns if c != "week_start"]
     for col in ds_merge_cols:
         if col in panel.columns:
-            # Fill NaNs introduced by balancing from ds_dedup
             panel[col] = panel[col].combine_first(
-                panel[["week_start"]].merge(ds_dedup[["week_start", col]], on="week_start", how="left")[col]
+                panel[["week_start"]].merge(
+                    ds_dedup[["week_start", col]], on="week_start", how="left"
+                )[col]
             )
 
-    # Recompute coupon_share_weight for balanced rows (needed for position assignment)
-    coupon_mask_bal = panel["maturity_bucket"].isin(_COUPON_BUCKETS)
-    coupon_weekly_bal = (
-        panel.loc[coupon_mask_bal]
-        .groupby("week_start")["awarded_amount"]
-        .sum()
-        .rename("coupon_total_awarded_bal")
-    )
-    panel = panel.merge(coupon_weekly_bal, on="week_start", how="left")
-    panel["coupon_share_weight"] = np.where(
-        coupon_mask_bal & (panel["coupon_total_awarded_bal"] > 0),
-        panel["awarded_amount"] / panel["coupon_total_awarded_bal"],
-        0.0,
-    )
-    panel.drop(columns=["coupon_total_awarded_bal"], inplace=True, errors="ignore")
-
-    # Step 3: Assign bucket-level position
-    def _assign_position(row: pd.Series) -> float:
-        bucket = row["maturity_bucket"]
-        if bucket == "bills":
-            return row.get("pd_bills_position", np.nan)
-        if bucket == "tips":
-            return row.get("pd_tips_position", np.nan)
-        if bucket == "frns":
-            return row.get("pd_frn_position", np.nan)
-        if bucket in _COUPON_BUCKETS:
-            coupon_pos = row.get("pd_coupon_position", np.nan)
-            weight = row.get("coupon_share_weight", 0.0)
-            if pd.notna(coupon_pos) and weight > 0:
-                return coupon_pos * weight
+    # ---- Step 3: Assign bucket-level position ----------------------------
+    if _has_granular:
+        # Direct mapping: sum observed NY Fed maturity bands per bucket.
+        # No dependence on auction volumes — eliminates mechanical endogeneity.
+        def _assign_position(row: pd.Series) -> float:
+            bucket = row["maturity_bucket"]
+            if bucket == "bills":
+                return row.get("pd_bills_position", np.nan)
+            if bucket == "tips":
+                return row.get("pd_tips_position", np.nan)
+            if bucket == "frns":
+                return row.get("pd_frn_position", np.nan)
+            if bucket == "long_coupon":
+                # Try split bands first (11-21yr + >21yr, available SBN2022+);
+                # fall back to combined >11yr (pd_coupon_gt11y, pre-2022).
+                band_cols = _BAND_TO_BUCKET["long_coupon"]
+                vals = [row.get(c, np.nan) for c in band_cols]
+                if all(pd.notna(v) for v in vals):
+                    return sum(vals)
+                # Fallback: 7-11yr + combined >11yr
+                fb_vals = [row.get(c, np.nan) for c in _LONG_COUPON_FALLBACK]
+                if all(pd.notna(v) for v in fb_vals):
+                    return sum(fb_vals)
+                return np.nan
+            if bucket in _BAND_TO_BUCKET:
+                band_cols = _BAND_TO_BUCKET[bucket]
+                vals = [row.get(c, np.nan) for c in band_cols]
+                # Require ALL constituent bands to be non-null.
+                # A missing band would silently understate the position.
+                if any(pd.isna(v) for v in vals):
+                    return np.nan
+                return sum(vals)
             return np.nan
-        return np.nan
+    else:
+        # Fallback: proportional split of aggregate pd_coupon_position.
+        # WARNING: this creates mechanical endogeneity — the LHS depends on
+        # awarded_amount which is collinear with the RHS announced_amount.
+        coupon_mask_bal = panel["maturity_bucket"].isin(_COUPON_BUCKETS)
+        coupon_weekly_bal = (
+            panel.loc[coupon_mask_bal]
+            .groupby("week_start")["awarded_amount"]
+            .sum()
+            .rename("coupon_total_awarded_bal")
+        )
+        panel = panel.merge(coupon_weekly_bal, on="week_start", how="left")
+        panel["coupon_share_weight"] = np.where(
+            coupon_mask_bal & (panel["coupon_total_awarded_bal"] > 0),
+            panel["awarded_amount"] / panel["coupon_total_awarded_bal"],
+            0.0,
+        )
+        panel.drop(columns=["coupon_total_awarded_bal"], inplace=True, errors="ignore")
+
+        def _assign_position(row: pd.Series) -> float:
+            bucket = row["maturity_bucket"]
+            if bucket == "bills":
+                return row.get("pd_bills_position", np.nan)
+            if bucket == "tips":
+                return row.get("pd_tips_position", np.nan)
+            if bucket == "frns":
+                return row.get("pd_frn_position", np.nan)
+            if bucket in _COUPON_BUCKETS:
+                coupon_pos = row.get("pd_coupon_position", np.nan)
+                weight = row.get("coupon_share_weight", 0.0)
+                if pd.notna(coupon_pos) and weight > 0:
+                    return coupon_pos * weight
+                return np.nan
+            return np.nan
 
     panel["bucket_position"] = panel.apply(_assign_position, axis=1)
 
@@ -254,7 +319,18 @@ def run_bucket_fe_regression(panel: pd.DataFrame) -> dict[str, object]:
         Values: fitted model result objects (PanelOLS or OLS results).
     """
     df = panel.copy()
+    n_theoretical = len(df)
     df = df.dropna(subset=["delta_position", "announced_amount"]).copy()
+    n_actual = len(df)
+    n_weeks = df["week_start"].nunique() if "week_start" in df.columns else 0
+    n_buckets = df["maturity_bucket"].nunique() if "maturity_bucket" in df.columns else 0
+    logger.info(
+        "Panel FE estimation sample: %d of %d obs retained (%.1f%%), "
+        "%d weeks x %d buckets",
+        n_actual, n_theoretical,
+        100 * n_actual / n_theoretical if n_theoretical > 0 else 0,
+        n_weeks, n_buckets,
+    )
 
     if len(df) < 20:
         raise ValueError(
@@ -281,14 +357,25 @@ def run_bucket_fe_regression(panel: pd.DataFrame) -> dict[str, object]:
     # under cross-sectional and temporal dependence regardless of cluster
     # count.
 
+    _sample_info = {
+        "n_theoretical": n_theoretical,
+        "n_actual": n_actual,
+        "pct_retained": round(100 * n_actual / n_theoretical, 1) if n_theoretical else 0,
+        "n_weeks": n_weeks,
+        "n_buckets": n_buckets,
+    }
+
     # Attempt to use linearmodels for proper panel FE estimation
     try:
-        return _run_with_linearmodels(df)
+        results = _run_with_linearmodels(df)
     except Exception as exc:
         logger.warning(
             "linearmodels failed (%s), falling back to statsmodels.", exc
         )
-        return _run_with_statsmodels(df)
+        results = _run_with_statsmodels(df)
+
+    results["_sample_info"] = _sample_info
+    return results
 
 
 def _run_with_linearmodels(df: pd.DataFrame) -> dict[str, object]:
@@ -362,9 +449,11 @@ def _run_with_statsmodels(df: pd.DataFrame) -> dict[str, object]:
     df = df.copy()
     results = {}
 
-    # Create dummy columns
-    bucket_dummies = pd.get_dummies(df["maturity_bucket"], prefix="d_bkt", drop_first=True)
-    week_dummies = pd.get_dummies(df["week_start"].astype(str), prefix="d_wk", drop_first=True)
+    # Create dummy columns (cast to float — pd.get_dummies returns bool
+    # by default, which creates a mixed dtype=object design matrix that
+    # statsmodels cannot invert).
+    bucket_dummies = pd.get_dummies(df["maturity_bucket"], prefix="d_bkt", drop_first=True, dtype=float)
+    week_dummies = pd.get_dummies(df["week_start"].astype(str), prefix="d_wk", drop_first=True, dtype=float)
 
     dep = df["delta_position"].values
 
