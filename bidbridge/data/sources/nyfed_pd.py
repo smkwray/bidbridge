@@ -17,6 +17,7 @@ import pandas as pd
 import requests
 
 from ..sources.base import DownloadManifest, write_manifest
+from ...features.auction_week import normalize_week_definition, week_end, week_start
 
 logger = logging.getLogger(__name__)
 
@@ -99,9 +100,57 @@ def _fetch_all_breaks(keys: list[str], start_date: str) -> list[dict]:
     return filtered
 
 
+def assign_reporting_weeks(
+    as_of_dates: pd.Series,
+    week_definition: str = "monday",
+) -> pd.DataFrame:
+    """Assign reporting weeks from NY Fed as-of dates under a given anchor."""
+    starts = week_start(as_of_dates, week_definition)
+    return pd.DataFrame({
+        "week_start": starts,
+        "week_end": week_end(starts),
+    })
+
+
+def finalize_primary_dealer_dataframe(
+    df: pd.DataFrame,
+    week_definition: str = "monday",
+) -> pd.DataFrame:
+    """Normalize dates and apply the documented financing forward-fill."""
+    frame = df.copy()
+    if frame.empty:
+        return frame
+
+    for col in ["as_of_date", "week_start", "week_end"]:
+        if col in frame.columns:
+            frame[col] = pd.to_datetime(frame[col], errors="coerce")
+
+    if "as_of_date" in frame.columns:
+        weeks = assign_reporting_weeks(frame["as_of_date"], week_definition=week_definition)
+        frame["week_start"] = weeks["week_start"]
+        frame["week_end"] = weeks["week_end"]
+
+    frame = frame.sort_values("as_of_date").reset_index(drop=True)
+
+    for col in ["pd_repo_treasury", "pd_reverse_repo_treasury"]:
+        if col in frame.columns:
+            frame[f"{col}_raw"] = frame[col].copy()
+            frame[col] = frame[col].ffill()
+
+    if "pd_repo_treasury" in frame.columns and "pd_reverse_repo_treasury" in frame.columns:
+        mask = frame["pd_repo_treasury"].notna() & frame["pd_reverse_repo_treasury"].notna()
+        frame.loc[mask, "pd_financing_usage"] = (
+            frame.loc[mask, "pd_repo_treasury"] - frame.loc[mask, "pd_reverse_repo_treasury"]
+        )
+
+    frame.attrs["week_definition"] = normalize_week_definition(week_definition)
+    return frame
+
+
 def fetch_primary_dealer_statistics(
     output_dir: Path,
     start_date: str = "2010-01-01",
+    week_definition: str = "monday",
 ) -> Path:
     """Fetch primary dealer position and financing data from NY Fed API.
 
@@ -145,9 +194,9 @@ def fetch_primary_dealer_statistics(
     for date_str in sorted(rows_by_date.keys()):
         vals = rows_by_date[date_str]
         as_of = pd.Timestamp(date_str)
-        # Week start = Monday of the reporting week (as-of is Wednesday)
-        week_start = (as_of - pd.Timedelta(days=as_of.weekday())).normalize()
-        week_end = week_start + pd.Timedelta(days=6)
+        week_info = assign_reporting_weeks(pd.Series([as_of]), week_definition=week_definition)
+        week_start_value = week_info.loc[0, "week_start"]
+        week_end_value = week_info.loc[0, "week_end"]
 
         total_treasury = vals.get("PDPOSGST-TOT")
         bills = vals.get("PDPOSGS-B")
@@ -193,8 +242,8 @@ def fetch_primary_dealer_statistics(
 
         output_rows.append({
             "as_of_date": date_str,
-            "week_start": week_start,
-            "week_end": week_end,
+            "week_start": week_start_value,
+            "week_end": week_end_value,
             "pd_treasury_inventory": total_treasury,
             "pd_bills_position": bills,
             "pd_coupon_position": coupon_total,
@@ -228,31 +277,7 @@ def fetch_primary_dealer_statistics(
     if df.empty:
         df = pd.DataFrame(columns=_EXPECTED_COLUMNS)
     else:
-        for col in ["as_of_date", "week_start", "week_end"]:
-            df[col] = pd.to_datetime(df[col], errors="coerce")
-
-        df = df.sort_values("as_of_date").reset_index(drop=True)
-
-    # Forward-fill suppressed repo/reverse-repo values.
-    # The NY Fed suppresses these with "*" for confidentiality when few dealers report.
-    # Suppression is increasingly common from 2022 onward (50-87% of weeks by 2025).
-    #
-    # ASSUMPTION: LOCF (last observation carried forward) is used because the
-    # underlying repo/reverse-repo volumes change slowly week-to-week. This is an
-    # unverifiable assumption — the forward-filled values should be treated as
-    # estimates, not observed data. The raw (unfilled) columns are preserved as
-    # pd_repo_treasury_raw and pd_reverse_repo_treasury_raw for transparency.
-    for col in ["pd_repo_treasury", "pd_reverse_repo_treasury"]:
-        if col in df.columns:
-            df[f"{col}_raw"] = df[col].copy()
-            df[col] = df[col].ffill()
-
-    # Recompute net financing after forward-fill
-    if "pd_repo_treasury" in df.columns and "pd_reverse_repo_treasury" in df.columns:
-        mask = df["pd_repo_treasury"].notna() & df["pd_reverse_repo_treasury"].notna()
-        df.loc[mask, "pd_financing_usage"] = (
-            df.loc[mask, "pd_repo_treasury"] - df.loc[mask, "pd_reverse_repo_treasury"]
-        )
+        df = finalize_primary_dealer_dataframe(df, week_definition=week_definition)
 
     csv_path = output_dir / "primary_dealer_stats.csv"
     df.to_csv(csv_path, index=False)

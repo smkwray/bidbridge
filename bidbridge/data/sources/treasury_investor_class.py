@@ -10,8 +10,11 @@ from __future__ import annotations
 
 import logging
 import re
+from html import unescape
+from io import BytesIO
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urljoin, urlparse
 
 import pandas as pd
 import requests
@@ -22,35 +25,105 @@ logger = logging.getLogger(__name__)
 
 LANDING_URL = "https://home.treasury.gov/data/investor-class-auction-allotments"
 FILE_BASE = "https://home.treasury.gov"
+_HISTORICAL_MARKERS = (
+    "histor",
+    "archive",
+    "legacy",
+    "old",
+    "pre-2009",
+    "pre 2009",
+)
 
 
-def _discover_xls_links() -> dict[str, str]:
-    """Scrape the landing page to find current .xls download links.
+class InvestorClassDiscoveryError(RuntimeError):
+    """Raised when the Treasury landing page no longer exposes expected links."""
 
-    Returns a dict with keys like 'coupons', 'bills', 'hist_coupons', 'hist_bills'.
-    """
+    def __init__(
+        self,
+        message: str,
+        *,
+        landing_url: str,
+        total_links: int,
+        spreadsheet_links: list[str],
+    ) -> None:
+        super().__init__(message)
+        self.landing_url = landing_url
+        self.total_links = total_links
+        self.spreadsheet_links = spreadsheet_links
+
+
+def _extract_anchor_hrefs(html: str) -> list[tuple[str, str]]:
+    """Return raw href/text pairs from anchor tags in a landing page."""
+
+    anchors: list[tuple[str, str]] = []
+    pattern = re.compile(r'<a\b[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', re.I | re.S)
+    for match in pattern.finditer(html):
+        href = unescape(match.group(1)).strip()
+        text = re.sub(r"<[^>]+>", " ", match.group(2))
+        text = re.sub(r"\s+", " ", unescape(text)).strip()
+        anchors.append((href, text))
+    return anchors
+
+
+def _classify_allotment_link(href: str, text: str) -> str | None:
+    """Classify a Treasury allotment workbook into one of the public buckets."""
+
+    parsed = urlparse(href)
+    name = Path(parsed.path).name.lower()
+    blob = " ".join([href, text, name]).lower()
+    suffix = Path(parsed.path).suffix.lower()
+    if suffix not in {".xls", ".xlsx"}:
+        return None
+
+    is_historical = any(marker in blob for marker in _HISTORICAL_MARKERS)
+    if re.search(r"\bcoupons?\b", blob):
+        return "hist_coupons" if is_historical else "coupons"
+    if re.search(r"\bbills?\b", blob):
+        return "hist_bills" if is_historical else "bills"
+    return None
+
+
+def _discover_allotment_links() -> dict[str, str]:
+    """Scrape the landing page to find current and historical download links."""
+
     resp = requests.get(LANDING_URL, timeout=30)
     resp.raise_for_status()
     html = resp.text
 
-    # Find all .xls and .xlsx links
-    pattern = r'href="(/system/files/276/[^"]+\.xlsx?)"'
-    matches = re.findall(pattern, html)
-
     links: dict[str, str] = {}
-    for path in matches:
-        lower = path.lower()
-        if "coupon" in lower and ("2000" in lower or "2009" in lower and "jan" in lower.split("coupon")[0]):
-            links["hist_coupons"] = FILE_BASE + path
-        elif "bill" in lower and ("2001" in lower or "2009" in lower and "aug" in lower.split("bill")[0]):
-            links["hist_bills"] = FILE_BASE + path
-        elif "coupon" in lower:
-            links["coupons"] = FILE_BASE + path
-        elif "bill" in lower:
-            links["bills"] = FILE_BASE + path
+    candidate_spreadsheets: list[str] = []
+    for href, text in _extract_anchor_hrefs(html):
+        abs_href = urljoin(FILE_BASE, href)
+        suffix = Path(urlparse(abs_href).path).suffix.lower()
+        if suffix in {".xls", ".xlsx"}:
+            candidate_spreadsheets.append(abs_href)
+        classified = _classify_allotment_link(abs_href, text)
+        if classified is None:
+            continue
+        links[classified] = abs_href
 
-    logger.info("Discovered investor class links: %s", list(links.keys()))
+    if not links:
+        all_links = [urljoin(FILE_BASE, href) for href, _ in _extract_anchor_hrefs(html)]
+        message = (
+            "Could not discover Treasury investor-class allotment workbooks from "
+            f"{LANDING_URL}. The page layout may have changed. "
+            f"Anchors found={len(all_links)}; spreadsheet links found={len(candidate_spreadsheets)}."
+        )
+        raise InvestorClassDiscoveryError(
+            message,
+            landing_url=LANDING_URL,
+            total_links=len(all_links),
+            spreadsheet_links=candidate_spreadsheets[:10],
+        )
+
+    logger.info("Discovered investor class links: %s", sorted(links))
     return links
+
+
+def _discover_xls_links() -> dict[str, str]:
+    """Backward-compatible wrapper for the old helper name."""
+
+    return _discover_allotment_links()
 
 
 def _normalize_column_name(col: str) -> str:
@@ -92,38 +165,34 @@ def _normalize_column_name(col: str) -> str:
     return col
 
 
-def _read_xls_file(url: str) -> pd.DataFrame:
-    """Download and read a single .xls file from Treasury.
+def _read_allotment_workbook(url: str) -> pd.DataFrame:
+    """Download and read a single Treasury allotment workbook.
 
     These files have 2 title rows, then column headers on row 3 (0-indexed row 2),
     followed by data rows.
     """
-    import tempfile
 
     logger.info("Downloading: %s", url)
     resp = requests.get(url, timeout=120)
     resp.raise_for_status()
 
-    with tempfile.NamedTemporaryFile(suffix=".xls", delete=False) as tmp:
-        tmp.write(resp.content)
-        tmp_path = tmp.name
+    suffix = Path(urlparse(url).path).suffix.lower()
+    engine = "xlrd" if suffix == ".xls" else None
+    workbook = BytesIO(resp.content)
+    # Read raw rows to find the actual column header row.
+    df_raw = pd.read_excel(workbook, engine=engine, header=None)
+    header_row = None
+    for idx in range(min(10, len(df_raw))):
+        row_text = " ".join(str(v).lower() for v in df_raw.iloc[idx] if pd.notna(v))
+        if "issue" in row_text and "cusip" in row_text:
+            header_row = idx
+            break
 
-    try:
-        # Read raw to find header row (look for a row containing "Issue" and "Cusip")
-        df_raw = pd.read_excel(tmp_path, engine="xlrd", header=None)
-        header_row = None
-        for idx in range(min(10, len(df_raw))):
-            row_text = " ".join(str(v).lower() for v in df_raw.iloc[idx] if pd.notna(v))
-            if "issue" in row_text and "cusip" in row_text:
-                header_row = idx
-                break
+    if header_row is None:
+        header_row = 2  # fallback
 
-        if header_row is None:
-            header_row = 2  # fallback
-
-        df = pd.read_excel(tmp_path, engine="xlrd", header=header_row)
-    finally:
-        Path(tmp_path).unlink(missing_ok=True)
+    workbook.seek(0)
+    df = pd.read_excel(workbook, engine=engine, header=header_row)
 
     # Drop rows that are all NaN (spacer rows in the Excel)
     df = df.dropna(how="all")
@@ -199,6 +268,8 @@ def _parse_allotment_df(df: pd.DataFrame) -> pd.DataFrame:
         df["security_type"] = df["security_type"].apply(_map_sec_type)
     elif "security_term" in df.columns:
         df["security_type"] = df["security_term"].apply(_map_sec_type)
+    else:
+        df["security_type"] = ""
 
     # Fill remaining blanks — if all entries in a file are Bills
     # (Bills-only file has no security_type column)
@@ -234,27 +305,26 @@ def fetch_investor_class_allotments(
     """
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    links = _discover_xls_links()
+    links = _discover_allotment_links()
     if not links:
-        # Count all links on the page to aid debugging
-        all_links = re.findall(r'href="([^"]+)"', requests.get(LANDING_URL, timeout=30).text)
-        raise RuntimeError(
-            "Could not discover any investor class .xls/.xlsx links from "
-            f"{LANDING_URL}. The page layout may have changed. "
-            f"Total links found on page: {len(all_links)}."
+        raise InvestorClassDiscoveryError(
+            "Could not discover any Treasury investor-class allotment workbooks.",
+            landing_url=LANDING_URL,
+            total_links=0,
+            spreadsheet_links=[],
         )
 
     frames = []
     for key in ["coupons", "bills"]:
         if key in links:
-            df = _read_xls_file(links[key])
+            df = _read_allotment_workbook(links[key])
             df = _parse_allotment_df(df)
             frames.append(df)
 
     if include_historical:
         for key in ["hist_coupons", "hist_bills"]:
             if key in links:
-                df = _read_xls_file(links[key])
+                df = _read_allotment_workbook(links[key])
                 df = _parse_allotment_df(df)
                 frames.append(df)
 

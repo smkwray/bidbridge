@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from ..config import load_study_config
 from ..features.auction_week import build_weekly_panel
 from ..features.maturity_panel import build_maturity_panel, pivot_maturity_panel_wide
 from ..paths import PROCESSED_DIR, RAW_DIR
@@ -189,6 +190,7 @@ def build_panel(
     raw_dir: Path | None = None,
     output_path: Path | None = None,
     start_date: str = "2010-01-01",
+    week_definition: str | None = None,
 ) -> Path:
     """Build the auction-week panel from raw fetched data.
 
@@ -197,6 +199,10 @@ def build_panel(
     raw_dir = raw_dir or RAW_DIR
     output_path = output_path or (PROCESSED_DIR / "auction_week_panel.csv")
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    if week_definition is None:
+        week_definition = (
+            load_study_config().get("sample", {}).get("week_definition", "monday_start")
+        )
 
     auctions_path = raw_dir / "treasury" / "treasury_auctions.csv"
     dealer_path = raw_dir / "nyfed" / "primary_dealer_stats.csv"
@@ -217,7 +223,9 @@ def build_panel(
         len(auctions), len(investor_class), len(dealer_stats),
     )
 
-    panel = build_weekly_panel(auctions, investor_class, dealer_stats)
+    panel = build_weekly_panel(
+        auctions, investor_class, dealer_stats, week_definition=week_definition,
+    )
 
     # Merge SOMA holdings if available.
     # SOMA as_of_date is Wednesday. To avoid look-ahead bias, lag by one week:
@@ -280,7 +288,9 @@ def build_panel(
     # Use the harmonized auctions (which have instrument_group and refunding_week)
     # and the raw investor class data (which has cusip for merging).
     maturity_output = output_path.parent / "maturity_bucket_panel.csv"
-    mat_panel = build_maturity_panel(auctions, investor_class)
+    mat_panel = build_maturity_panel(
+        auctions, investor_class, week_definition=week_definition,
+    )
     mat_panel.to_csv(maturity_output, index=False)
 
     # Wide-format maturity panel (one row per week, bucket-specific columns)

@@ -179,7 +179,7 @@
           <ul class="method-details">
             <li><strong>Panel:</strong> Balanced 6-bucket &times; 675-week grid using directly observed NY Fed maturity bands (n&nbsp;=&nbsp;2,584 in estimation)</li>
             <li><strong>Buckets:</strong> Bills, short coupon (2&ndash;3Y), belly (5&ndash;7Y), long (10&ndash;30Y), TIPS, FRN</li>
-            <li><strong>Inference:</strong> Entity-clustered SEs + Driscoll-Kraay robustness</li>
+            <li><strong>Inference:</strong> Driscoll-Kraay headline surface + clustered-by-bucket robustness</li>
           </ul>
         </div>
         <div class="method-card">
@@ -246,7 +246,9 @@
         <div class="pipe-arrow">&rarr;</div>
         <div class="pipe-step">Metrics<br><span class="pipe-detail">Bridge episodes, z-scores</span></div>
         <div class="pipe-arrow">&rarr;</div>
-        <div class="pipe-step">Analysis<br><span class="pipe-detail">LP, FE, persistence</span></div>
+        <div class="pipe-step">Site Data<br><span class="pipe-detail">JSON for charts + tables</span></div>
+        <div class="pipe-arrow">&rarr;</div>
+        <div class="pipe-step">Analysis<br><span class="pipe-detail">LP, FE, persistence, pressure monitor</span></div>
       </div>
     </div>
   </section>
@@ -293,6 +295,46 @@
     </div>
   </section>
 
+  <!-- ===== PRESSURE MONITOR ===== -->
+  <section class="section" id="pressure-monitor">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-number">09</span>
+        <h2>Upcoming Auction Pressure</h2>
+      </div>
+      <p class="lead">A compact near-term monitor for the next 1&ndash;4 auction weeks. Scores combine recent bridge intensity, weak-end-investor absorption, and the size mix of scheduled supply into a transparent 0&ndash;1 pressure scale.</p>
+      <details class="pressure-explainer">
+        <summary>How the score and category work</summary>
+        <p><code>composite_pressure_score = 0.40 &times; supply_size_score + 0.20 &times; bill_share_score + 0.20 &times; recent_bridge_rate + 0.20 &times; recent_weak_demand_rate</code></p>
+        <p><code>low</code> is below <code>0.33</code>, <code>medium</code> is <code>0.33</code> to below <code>0.66</code>, and <code>high</code> is <code>0.66</code> or above.</p>
+      </details>
+      <div class="pressure-panel">
+        <div class="table-wrapper pressure-table-wrapper" id="pressure-monitor-wrapper">
+          <table class="data-table pressure-table" id="pressure-monitor-table">
+            <thead>
+              <tr>
+                <th>Week</th>
+                <th>Ahead</th>
+                <th>Offering ($B)</th>
+                <th>Supply</th>
+                <th>Bill Share</th>
+                <th>Recent Bridge</th>
+                <th>Recent Weak Demand</th>
+                <th>Score</th>
+                <th>Category</th>
+              </tr>
+            </thead>
+            <tbody id="pressure-monitor-body"></tbody>
+          </table>
+        </div>
+        <div class="pressure-empty" id="pressure-monitor-empty" hidden>
+          No upcoming auction weeks are available in the site payload yet. The monitor will populate automatically once <code>pressure_monitor</code> data is written into <code>site/data/bidbridge.json</code>.
+        </div>
+        <p class="table-note">Scores are normalized to 0&ndash;1. The monitor is written by <code>bidbridge run-all</code> and exposed through the site-data JSON payload.</p>
+      </div>
+    </div>
+  </section>
+
   <!-- ===== FOOTER ===== -->
   <footer class="footer">
     <div class="container">
@@ -305,11 +347,11 @@
         <div>
           <h4>CLI Commands</h4>
           <ul class="footer-list">
+            <li><code>bidbridge run-all</code> &mdash; full reproduction path</li>
             <li><code>bidbridge fetch</code> &mdash; download all sources</li>
             <li><code>bidbridge build-panel</code> &mdash; construct panel</li>
-            <li><code>bidbridge analyze</code> &mdash; generate outputs</li>
-            <li><code>bidbridge lp</code> &mdash; local projections</li>
-            <li><code>bidbridge panel-fe</code> &mdash; panel regressions</li>
+            <li><code>bidbridge lp</code> &mdash; local projections + placebos</li>
+            <li><code>bidbridge panel-fe</code> &mdash; FE headline + Thursday-start robustness</li>
           </ul>
         </div>
         <div>
@@ -323,7 +365,7 @@
           </ul>
         </div>
       </div>
-      <p class="footer-note">Data through March 2026 &middot; 846 weeks &middot; 33 columns &middot; 5 sources &middot; 29 tests passing &middot; <a href="https://github.com/smkwray/bidbridge">github.com/smkwray/bidbridge</a></p>
+      <p class="footer-note">Data through March 2026 &middot; 846 weeks &middot; 33 columns &middot; 5 sources &middot; reproducible outputs via <code>bidbridge run-all</code> &middot; <a href="https://github.com/smkwray/bidbridge">github.com/smkwray/bidbridge</a></p>
     </div>
   </footer>
 

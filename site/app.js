@@ -140,22 +140,56 @@
   function plotRefunding() {
     const rt = D.refunding_test || [];
     if (!rt.length) return;
-    // Shorten labels to avoid overlap
-    const shortLabels = {
-      "Inventory change ($M)": "Inv Change",
-      "Weekly awarded ($)": "Awarded",
-      "Dealer share": "Dealer %",
-      "Bid-to-cover": "Bid/Cover",
-      "Tail (bp)": "Tail (bp)",
+    const metricConfig = {
+      "Inventory change ($M)": {
+        label: "Inv Change ($B)",
+        transform: value => Number(value) / 1000,
+        hoverSuffix: " $B",
+      },
+      "Weekly awarded ($)": {
+        label: "Awarded ($B)",
+        transform: value => Number(value) / 1e9,
+        hoverSuffix: " $B",
+      },
+      "Dealer share": {
+        label: "Dealer (%)",
+        transform: value => Number(value) * 100,
+        hoverSuffix: "%",
+      },
+      "Bid-to-cover": {
+        label: "Bid/Cover",
+        transform: value => Number(value),
+        hoverSuffix: "",
+      },
+      "Tail (bp)": {
+        label: "Tail (bp)",
+        transform: value => Number(value),
+        hoverSuffix: " bp",
+      },
     };
-    const vars = rt.map(r => shortLabels[r.variable] || r.variable);
+    const display = rt.map(row => {
+      const config = metricConfig[row.variable] || {
+        label: row.variable,
+        transform: value => Number(value),
+        hoverSuffix: "",
+      };
+      return {
+        label: config.label,
+        refundingMean: config.transform(row.refunding_mean),
+        ordinaryMean: config.transform(row.ordinary_mean),
+        hoverSuffix: config.hoverSuffix,
+      };
+    });
+
     Plotly.react("chart-refunding", [
-      { x: vars, y: rt.map(r => r.refunding_mean), name: "Refunding", type: "bar",
-        marker: { color: RED }, hovertemplate: "%{x}: <b>%{y:,.2f}</b><extra>Refunding</extra>" },
-      { x: vars, y: rt.map(r => r.ordinary_mean), name: "Ordinary", type: "bar",
-        marker: { color: BLUE }, hovertemplate: "%{x}: <b>%{y:,.2f}</b><extra>Ordinary</extra>" },
+      { x: display.map(r => r.label), y: display.map(r => r.refundingMean), name: "Refunding", type: "bar",
+        marker: { color: RED }, customdata: display.map(r => r.hoverSuffix),
+        hovertemplate: "%{x}: <b>%{y:,.2f}%{customdata}</b><extra>Refunding</extra>" },
+      { x: display.map(r => r.label), y: display.map(r => r.ordinaryMean), name: "Ordinary", type: "bar",
+        marker: { color: BLUE }, customdata: display.map(r => r.hoverSuffix),
+        hovertemplate: "%{x}: <b>%{y:,.2f}%{customdata}</b><extra>Ordinary</extra>" },
     ], Object.assign(
-      baseLayout("Refunding vs Ordinary Weeks", "", "Mean value"),
+      baseLayout("Refunding vs Ordinary Weeks", "", "Metric-specific display units"),
       { barmode: "group", margin: { t: 40, r: 30, b: 80, l: 70 },
         legend: { orientation: "h", y: -0.3, font: { color: plotText() } } }
     ), smallConfig);
@@ -275,6 +309,65 @@
       { barmode: "group" }), smallConfig);
   }
 
+  /* ===== PRESSURE MONITOR ===== */
+  function formatBillions(value) {
+    if (value === null || value === undefined || Number.isNaN(value)) return "—";
+    return `$${Number(value).toLocaleString(undefined, { maximumFractionDigits: 1 })}B`;
+  }
+
+  function formatRate(value) {
+    if (value === null || value === undefined || Number.isNaN(value)) return "—";
+    return `${(Number(value) * 100).toFixed(1)}%`;
+  }
+
+  function formatScore(value) {
+    if (value === null || value === undefined || Number.isNaN(value)) return "—";
+    return Number(value).toFixed(2);
+  }
+
+  function renderPressureMonitor() {
+    const rows = D.pressure_monitor || [];
+    const body = document.getElementById("pressure-monitor-body");
+    const wrapper = document.getElementById("pressure-monitor-wrapper");
+    const empty = document.getElementById("pressure-monitor-empty");
+    if (!body || !wrapper || !empty) return;
+
+    body.innerHTML = "";
+    if (!rows.length) {
+      wrapper.hidden = true;
+      empty.hidden = false;
+      return;
+    }
+
+    wrapper.hidden = false;
+    empty.hidden = true;
+    rows.forEach(row => {
+      const week = row.week_start || "—";
+      const weekAhead = row.weeks_ahead ?? "—";
+      const offered = formatBillions((row.total_offering_amount || 0) / 1e9);
+      const supplyScore = formatScore(row.supply_size_score);
+      const billShare = formatRate(row.bill_share);
+      const recentBridge = formatRate(row.recent_bridge_rate);
+      const recentWeakDemand = formatRate(row.recent_weak_demand_rate);
+      const score = formatScore(row.composite_pressure_score);
+      const category = row.pressure_category || "—";
+      body.insertAdjacentHTML(
+        "beforeend",
+        `<tr>
+          <td>${week}</td>
+          <td>${weekAhead}</td>
+          <td>${offered}</td>
+          <td>${supplyScore}</td>
+          <td>${billShare}</td>
+          <td>${recentBridge}</td>
+          <td>${recentWeakDemand}</td>
+          <td>${score}</td>
+          <td>${category}</td>
+        </tr>`,
+      );
+    });
+  }
+
   /* ===== CHART: PERSISTENCE ===== */
   function plotPersistence() {
     const bs = D.bridge_summary || [];
@@ -351,7 +444,7 @@
 
   /* ===== RENDER ALL ===== */
   plotLPIRF(); plotLPRegime(); plotScatter(); plotMaturity(); plotRefunding();
-  plotTimeseries("supply"); plotAnnual(); plotStress(); plotPersistence();
+  plotTimeseries("supply"); plotAnnual(); plotStress(); plotPersistence(); renderPressureMonitor();
 
   /* ===== THEME TOGGLE ===== */
   const toggle = document.getElementById("theme-toggle");

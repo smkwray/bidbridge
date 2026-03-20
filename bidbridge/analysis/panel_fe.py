@@ -76,7 +76,7 @@ _LONG_COUPON_FALLBACK = ["pd_coupon_7_11y", "pd_coupon_gt11y"]
 
 # Minimum columns needed to use granular path (short + belly + 7-11yr;
 # long_coupon can use either split or combined >11yr)
-_GRANULAR_MIN_COLS = [
+GRANULAR_MIN_COLS = [
     "pd_coupon_le2y", "pd_coupon_2_3y",   # short_coupon
     "pd_coupon_3_6y", "pd_coupon_6_7y",   # belly_coupon
     "pd_coupon_7_11y",                     # long_coupon (always needed)
@@ -90,6 +90,8 @@ _GRANULAR_MIN_COLS = [
 def build_bucket_outcomes(
     maturity_panel: pd.DataFrame,
     dealer_stats: pd.DataFrame,
+    headline_strict: bool = False,
+    week_definition: str = "monday",
 ) -> pd.DataFrame:
     """Merge maturity-bucket panel with bucket-level dealer positions from NY Fed.
 
@@ -118,8 +120,12 @@ def build_bucket_outcomes(
     ds["week_start"] = pd.to_datetime(ds["week_start"])
 
     # ---- Detect whether granular coupon bands are available ---------------
-    _has_granular = all(col in ds.columns for col in _GRANULAR_MIN_COLS)
+    _has_granular = all(col in ds.columns for col in GRANULAR_MIN_COLS)
     if not _has_granular:
+        if headline_strict:
+            raise ValueError(
+                "Granular coupon band columns are required for headline FE outputs."
+            )
         logger.warning(
             "Granular coupon band columns not found in dealer_stats. "
             "Falling back to proportional split of pd_coupon_position. "
@@ -133,7 +139,7 @@ def build_bucket_outcomes(
         ds_cols.append("pd_frn_position")
     if _has_granular:
         # Include all available band columns (min set + optional split/combined)
-        for col in _GRANULAR_MIN_COLS:
+        for col in GRANULAR_MIN_COLS:
             if col not in ds_cols:
                 ds_cols.append(col)
         for col in ["pd_coupon_11_21y", "pd_coupon_gt21y", "pd_coupon_gt11y"]:
@@ -285,6 +291,9 @@ def build_bucket_outcomes(
         result["week_start"].nunique(),
         result["maturity_bucket"].nunique(),
     )
+    result.attrs["uses_granular_bands"] = bool(_has_granular)
+    result.attrs["headline_fe_eligible"] = bool(_has_granular)
+    result.attrs["week_definition"] = week_definition
     return result
 
 
@@ -385,6 +394,11 @@ def run_bucket_fe_regression(panel: pd.DataFrame) -> dict[str, object]:
     )
 
     results["_sample_info"] = _sample_info
+    results["_metadata"] = {
+        "uses_granular_bands": bool(panel.attrs.get("uses_granular_bands", False)),
+        "headline_fe_eligible": bool(panel.attrs.get("headline_fe_eligible", False)),
+        "week_definition": panel.attrs.get("week_definition", "monday"),
+    }
     return results
 
 
@@ -595,6 +609,7 @@ def generate_panel_fe_figures(
     results: dict[str, object],
     panel: pd.DataFrame,
     figures_dir: str | Path,
+    file_prefix: str = "panel_fe",
 ) -> dict[str, Path]:
     """Generate panel FE regression figures.
 
@@ -617,8 +632,8 @@ def generate_panel_fe_figures(
     paths: dict[str, Path] = {}
 
     # ---- Figure 1: Coefficient comparison across specs --------------------
-    spec_names = ["pooled", "bucket_fe", "twoway_fe", "interaction"]
-    spec_labels = ["Pooled OLS", "Bucket FE", "Two-way FE", "Two-way FE\n+ Interaction"]
+    spec_names = ["pooled", "bucket_fe", "twoway_fe_driscoll_kraay", "interaction_driscoll_kraay"]
+    spec_labels = ["Pooled OLS", "Bucket FE", "Two-way FE\n(DK)", "Interaction\n(DK)"]
     param = "supply_B"
 
     coefs = []
@@ -657,7 +672,7 @@ def generate_panel_fe_figures(
         ax.grid(axis="y", alpha=0.3)
         plt.tight_layout()
 
-        out = figures_dir / "panel_fe_coefficients.png"
+        out = figures_dir / f"{file_prefix}_coefficients.png"
         fig.savefig(out, dpi=150)
         plt.close(fig)
         paths["panel_fe_coefficients"] = out
@@ -711,7 +726,7 @@ def generate_panel_fe_figures(
         ax.grid(axis="y", alpha=0.3)
         plt.tight_layout()
 
-        out = figures_dir / "panel_fe_bucket_response.png"
+        out = figures_dir / f"{file_prefix}_bucket_response.png"
         fig.savefig(out, dpi=150)
         plt.close(fig)
         paths["panel_fe_bucket_response"] = out
@@ -729,6 +744,7 @@ def generate_panel_fe_figures(
 def generate_panel_fe_table(
     results: dict[str, object],
     tables_dir: str | Path,
+    file_name: str = "panel_fe_results.csv",
 ) -> Path:
     """Save panel FE results to a CSV table with all specs side by side.
 
@@ -747,7 +763,15 @@ def generate_panel_fe_table(
     tables_dir = Path(tables_dir)
     tables_dir.mkdir(parents=True, exist_ok=True)
 
-    spec_names = ["pooled", "bucket_fe", "twoway_fe", "interaction"]
+    metadata = results.get("_metadata", {})
+    spec_names = [
+        "pooled",
+        "bucket_fe",
+        "twoway_fe_driscoll_kraay",
+        "interaction_driscoll_kraay",
+        "twoway_fe",
+        "interaction",
+    ]
     params_of_interest = ["supply_B", "lagged_dealer_share", "supply_x_soft_demand"]
     param_labels = {
         "supply_B": "Announced supply ($B)",
@@ -792,10 +816,39 @@ def generate_panel_fe_table(
             "ci_lower": np.nan,
             "ci_upper": np.nan,
         })
+        rows.append({
+            "specification": spec,
+            "variable": "Covariance",
+            "coefficient": "Driscoll-Kraay" if "driscoll_kraay" in spec else "Clustered by bucket",
+            "std_error": np.nan,
+            "ci_lower": np.nan,
+            "ci_upper": np.nan,
+        })
+        rows.append({
+            "specification": spec,
+            "variable": "Week definition",
+            "coefficient": metadata.get("week_definition", "monday"),
+            "std_error": np.nan,
+            "ci_lower": np.nan,
+            "ci_upper": np.nan,
+        })
+        rows.append({
+            "specification": spec,
+            "variable": "Granular bands required",
+            "coefficient": "Yes" if metadata.get("headline_fe_eligible", False) else "No",
+            "std_error": np.nan,
+            "ci_lower": np.nan,
+            "ci_upper": np.nan,
+        })
 
         # Add FE flags
-        has_bucket_fe = spec in ("bucket_fe", "twoway_fe", "interaction")
-        has_week_fe = spec in ("twoway_fe", "interaction")
+        has_bucket_fe = spec in (
+            "bucket_fe", "twoway_fe", "interaction",
+            "twoway_fe_driscoll_kraay", "interaction_driscoll_kraay",
+        )
+        has_week_fe = spec in (
+            "twoway_fe", "interaction", "twoway_fe_driscoll_kraay", "interaction_driscoll_kraay",
+        )
         rows.append({
             "specification": spec,
             "variable": "Bucket FE",
@@ -814,7 +867,7 @@ def generate_panel_fe_table(
         })
 
     table = pd.DataFrame(rows)
-    out = tables_dir / "panel_fe_results.csv"
+    out = tables_dir / file_name
     table.to_csv(out, index=False)
     logger.info("Saved panel FE results table to %s (%d rows)", out, len(table))
     return out

@@ -18,7 +18,7 @@ import re
 
 import pandas as pd
 
-from .auction_week import monday_start, weighted_average
+from .auction_week import choose_investor_merge_keys, week_end, week_start, weighted_average
 
 
 # Map security_term strings from FiscalData to maturity buckets
@@ -92,6 +92,7 @@ def _extract_years(term: str) -> float | None:
 def build_maturity_panel(
     auctions: pd.DataFrame,
     investor_class: pd.DataFrame,
+    week_definition: str = "monday",
 ) -> pd.DataFrame:
     """Build a (week_start, maturity_bucket) panel from auction-level data.
 
@@ -113,8 +114,8 @@ def build_maturity_panel(
     auctions = auctions.copy()
     investor_class = investor_class.copy()
 
-    auctions["week_start"] = monday_start(auctions["auction_date"])
-    auctions["week_end"] = auctions["week_start"] + pd.Timedelta(days=6)
+    auctions["week_start"] = week_start(auctions["auction_date"], week_definition)
+    auctions["week_end"] = week_end(auctions["week_start"])
 
     # Classify maturity buckets
     auctions["maturity_bucket"] = auctions.apply(_classify_maturity_bucket, axis=1)
@@ -123,15 +124,7 @@ def build_maturity_panel(
     auctions["issue_date"] = pd.to_datetime(auctions["issue_date"])
     investor_class["issue_date"] = pd.to_datetime(investor_class["issue_date"])
 
-    has_cusip = "cusip" in auctions.columns and "cusip" in investor_class.columns
-    has_issue_date = "issue_date" in auctions.columns and "issue_date" in investor_class.columns
-    if has_cusip and has_issue_date and auctions["cusip"].notna().any():
-        merge_keys = ["cusip", "issue_date"]
-    elif has_cusip and auctions["cusip"].notna().any():
-        merge_keys = ["cusip"]
-    else:
-        merge_keys = ["issue_date", "security_type"]
-
+    merge_keys = choose_investor_merge_keys(auctions, investor_class)
     ic_deduped = investor_class.drop_duplicates(subset=merge_keys, keep="last")
     merged = auctions.merge(ic_deduped, on=merge_keys, how="left", suffixes=("", "_ic"))
 
@@ -169,6 +162,7 @@ def build_maturity_panel(
         panel["awarded_amount"] / weekly_total.replace({0: pd.NA})
     ).fillna(0.0)
 
+    panel.attrs["week_definition"] = week_definition
     return panel.sort_values(["week_start", "maturity_bucket"]).reset_index(drop=True)
 
 

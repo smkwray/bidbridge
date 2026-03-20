@@ -28,9 +28,12 @@ def _ols_robust(
     e = y - X @ beta
 
     # HC1 robust covariance: (X'X)^{-1} X' diag(e^2) X (X'X)^{-1} * n/(n-k)
-    XtX_inv = np.linalg.inv(X.T @ X)
+    # Use a pseudoinverse so the descriptive pipeline remains runnable when
+    # public-data regressors become collinear in a given sample window.
+    XtX_inv = np.linalg.pinv(X.T @ X)
     meat = X.T @ np.diag(e**2) @ X
-    V_hc1 = XtX_inv @ meat @ XtX_inv * (n / (n - k))
+    dof = max(n - k, 1)
+    V_hc1 = XtX_inv @ meat @ XtX_inv * (n / dof)
 
     se = np.sqrt(np.diag(V_hc1))
     t_stat = beta / se
@@ -55,7 +58,7 @@ def _ols_robust(
     # Store metadata as attrs
     result.attrs["n_obs"] = n
     result.attrs["r_squared"] = r_squared
-    result.attrs["residual_std"] = np.sqrt(ss_res / (n - k))
+    result.attrs["residual_std"] = np.sqrt(ss_res / dof)
 
     return result
 

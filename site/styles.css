@@ -334,6 +334,44 @@ ul, ol { padding-left: 1.4em; }
 .sig { color: var(--accent-green); font-weight: 700; }
 .not-sig { color: var(--text-muted); }
 
+/* ===== PRESSURE MONITOR ===== */
+.pressure-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+}
+.pressure-explainer {
+  margin: -0.5rem 0 1.25rem;
+  padding: 1rem 1.1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.pressure-explainer summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text);
+}
+.pressure-explainer p {
+  margin-top: 0.85rem;
+  color: var(--text-muted);
+}
+.pressure-table-wrapper {
+  margin: 1rem 0 0;
+}
+.pressure-table {
+  font-size: 0.86rem;
+}
+.pressure-empty {
+  margin-top: 1rem;
+  padding: 1rem 1.2rem;
+  border: 1px dashed var(--border-light);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  background: var(--bg);
+}
+
 /* ===== DATA SOURCES ===== */
 .source-grid {
   display: grid;
@@ -553,4 +591,5 @@ ul, ol { padding-left: 1.4em; }
   .pipe-arrow { transform: rotate(90deg); }
   .stat-row { flex-direction: column; gap: 1rem; }
   .figure-pair { grid-template-columns: 1fr; }
+  .pressure-panel { padding: 1rem; }
 }

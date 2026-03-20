@@ -9604,5 +9604,37 @@
       "avg_dealer_share": 0.32,
       "avg_financing_intensity": 0.76
     }
+  ],
+  "pressure_monitor": [
+    {
+      "week_start": "2026-03-16 00:00:00",
+      "week_definition": "monday",
+      "weeks_ahead": 0,
+      "auction_count": 7,
+      "total_offering_amount": 545000000000.0,
+      "bill_share": 1.0,
+      "heavy_supply_threshold": 351000000000.0,
+      "recent_bridge_rate": 0.07692307692307693,
+      "recent_weak_demand_rate": 0.0,
+      "supply_size_score": 1.0,
+      "bill_share_score": 1.0,
+      "composite_pressure_score": 0.6154,
+      "pressure_category": "medium"
+    },
+    {
+      "week_start": "2026-03-23 00:00:00",
+      "week_definition": "monday",
+      "weeks_ahead": 1,
+      "auction_count": 7,
+      "total_offering_amount": 457000000000.0,
+      "bill_share": 0.5382932166301969,
+      "heavy_supply_threshold": 351000000000.0,
+      "recent_bridge_rate": 0.07692307692307693,
+      "recent_weak_demand_rate": 0.0,
+      "supply_size_score": 1.0,
+      "bill_share_score": 0.5382932166301969,
+      "composite_pressure_score": 0.523,
+      "pressure_category": "medium"
+    }
   ]
 }

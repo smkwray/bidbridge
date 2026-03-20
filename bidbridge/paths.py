@@ -22,6 +22,8 @@ EXTERNAL_DIR = DATA_DIR / "external"
 OUTPUTS_DIR = ROOT / "outputs"
 FIGURES_DIR = OUTPUTS_DIR / "figures"
 TABLES_DIR = OUTPUTS_DIR / "tables"
+SITE_DIR = ROOT / "site"
+SITE_DATA_DIR = SITE_DIR / "data"
 
 
 def ensure_project_directories() -> list[Path]:
@@ -34,6 +36,8 @@ def ensure_project_directories() -> list[Path]:
         OUTPUTS_DIR,
         FIGURES_DIR,
         TABLES_DIR,
+        SITE_DIR,
+        SITE_DATA_DIR,
     ]
     for directory in directories:
         directory.mkdir(parents=True, exist_ok=True)

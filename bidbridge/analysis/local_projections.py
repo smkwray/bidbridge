@@ -221,6 +221,55 @@ def _contiguity_mask(df: pd.DataFrame, h: int) -> pd.Series:
 _CONTROL_COLS = ["L_supply_M", "L_dealer_share", "L_trend_years", "L_soma_change_B"]
 
 
+def _run_projection_spec(
+    df: pd.DataFrame,
+    shock_col: str,
+    interaction_col: str,
+    max_horizon: int,
+    outcome: str,
+    regime_label: str,
+) -> pd.DataFrame:
+    """Estimate a local projection path for a chosen shock specification."""
+    rows: list[dict[str, Any]] = []
+    working = df.copy()
+
+    for h in range(max_horizon + 1):
+        working[f"_cum_y_h{h}"] = _cumulative_outcome(working, h, outcome=outcome)
+        contig = _contiguity_mask(working, h)
+
+        est_cols = [f"_cum_y_h{h}", shock_col, interaction_col] + _CONTROL_COLS
+        mask = working[est_cols].notna().all(axis=1) & contig
+        est = working.loc[mask].copy()
+        if len(est) < 10:
+            working.drop(columns=[f"_cum_y_h{h}"], inplace=True)
+            continue
+
+        y = est[f"_cum_y_h{h}"].astype(float)
+        X_cols = [shock_col, interaction_col] + _CONTROL_COLS
+        X = sm.add_constant(est[X_cols].astype(float))
+
+        model = sm.OLS(y, X).fit(
+            cov_type="HAC",
+            cov_kwds={"maxlags": h + 1},
+        )
+        ci = model.conf_int().loc[shock_col]
+        rows.append({
+            "horizon": h,
+            "beta": model.params[shock_col],
+            "se": model.bse[shock_col],
+            "t_stat": model.tvalues[shock_col],
+            "p_value": model.pvalues[shock_col],
+            "ci_lower": ci.iloc[0],
+            "ci_upper": ci.iloc[1],
+            "n_obs": int(model.nobs),
+            "r_squared": model.rsquared,
+            "regime": regime_label,
+        })
+        working.drop(columns=[f"_cum_y_h{h}"], inplace=True)
+
+    return pd.DataFrame(rows)
+
+
 def run_local_projections(
     panel: pd.DataFrame,
     max_horizon: int = 12,
@@ -251,56 +300,50 @@ def run_local_projections(
     """
     df = _prepare_lp_panel(panel)
 
-    rows: list[dict[str, Any]] = []
-    for h in range(max_horizon + 1):
-        # Cumulative outcome from t to t+h
-        df[f"_cum_y_h{h}"] = _cumulative_outcome(df, h, outcome=outcome)
+    return _run_projection_spec(
+        df,
+        shock_col="shock",
+        interaction_col="shock_x_soft",
+        max_horizon=max_horizon,
+        outcome=outcome,
+        regime_label="full_sample",
+    )
 
-        # Contiguity enforcement
-        contig = _contiguity_mask(df, h)
 
-        # Required columns for estimation
-        est_cols = [f"_cum_y_h{h}", "shock", "shock_x_soft"] + _CONTROL_COLS
-        mask = df[est_cols].notna().all(axis=1) & contig
+def run_local_projection_placebos(
+    panel: pd.DataFrame,
+    max_horizon: int = 12,
+    outcome: str = "inventory_change",
+) -> pd.DataFrame:
+    """Run lead and shifted-event placebo LP specifications."""
+    df = _prepare_lp_panel(panel)
+    placebo_specs = [
+        ("lead1_shock", "lead1_shock_x_soft", "lead_placebo_h1", -1),
+        ("lead4_shock", "lead4_shock_x_soft", "shifted_placebo_h4", -4),
+    ]
 
-        est = df.loc[mask].copy()
-        if len(est) < 10:
-            logger.warning("Horizon h=%d: only %d obs, skipping.", h, len(est))
-            df.drop(columns=[f"_cum_y_h{h}"], inplace=True)
-            continue
-
-        # Build the regression
-        y = est[f"_cum_y_h{h}"].astype(float)
-        X_cols = ["shock", "shock_x_soft"] + _CONTROL_COLS
-        X = sm.add_constant(est[X_cols].astype(float))
-
-        model = sm.OLS(y, X).fit(
-            cov_type="HAC",
-            cov_kwds={"maxlags": h + 1},
+    results: list[pd.DataFrame] = []
+    for shock_col, interact_col, label, shift in placebo_specs:
+        df[shock_col] = df["shock"].shift(shift).fillna(0).astype(int)
+        df[interact_col] = df[shock_col] * df["lagged_soft_demand"]
+        placebo_df = _run_projection_spec(
+            df,
+            shock_col=shock_col,
+            interaction_col=interact_col,
+            max_horizon=max_horizon,
+            outcome=outcome,
+            regime_label=label,
         )
+        if not placebo_df.empty:
+            placebo_df["placebo_type"] = label
+            results.append(placebo_df)
 
-        beta_h = model.params["shock"]
-        se_h = model.bse["shock"]
-        t_h = model.tvalues["shock"]
-        p_h = model.pvalues["shock"]
-        ci = model.conf_int().loc["shock"]
-
-        rows.append({
-            "horizon": h,
-            "beta": beta_h,
-            "se": se_h,
-            "t_stat": t_h,
-            "p_value": p_h,
-            "ci_lower": ci.iloc[0],
-            "ci_upper": ci.iloc[1],
-            "n_obs": int(model.nobs),
-            "r_squared": model.rsquared,
-            "regime": "full_sample",
-        })
-
-        df.drop(columns=[f"_cum_y_h{h}"], inplace=True)
-
-    return pd.DataFrame(rows)
+    if results:
+        return pd.concat(results, ignore_index=True)
+    return pd.DataFrame(columns=[
+        "horizon", "beta", "se", "t_stat", "p_value", "ci_lower",
+        "ci_upper", "n_obs", "r_squared", "regime", "placebo_type",
+    ])
 
 
 # ---------------------------------------------------------------------------
@@ -678,6 +721,7 @@ def generate_shock_distribution_figure(
 def generate_lp_table(
     lp_results: dict[str, pd.DataFrame],
     tables_dir: str | Path,
+    file_name: str = "lp_results.csv",
 ) -> Path:
     """Save LP results to ``lp_results.csv``.
 
@@ -718,7 +762,22 @@ def generate_lp_table(
     else:
         combined = pd.DataFrame(columns=expected_cols)
 
-    out = tables_dir / "lp_results.csv"
+    out = tables_dir / file_name
     combined.to_csv(out, index=False)
     logger.info("Saved LP results table to %s", out)
+    return out
+
+
+def generate_lp_placebo_table(
+    placebo_results: pd.DataFrame,
+    tables_dir: str | Path,
+    file_name: str = "lp_placebo_results.csv",
+) -> Path:
+    """Write LP placebo/falsification results to disk."""
+    tables_dir = Path(tables_dir)
+    tables_dir.mkdir(parents=True, exist_ok=True)
+
+    out = tables_dir / file_name
+    placebo_results.to_csv(out, index=False)
+    logger.info("Saved LP placebo table to %s", out)
     return out

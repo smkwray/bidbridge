@@ -43,15 +43,15 @@ uv venv ~/venvs/bidbridge --python 3.11
 # Install
 ~/venvs/bidbridge/bin/pip install -e ".[dev]"
 
-# Full pipeline: fetch data, build panel, generate analysis
-bidbridge -v run-all
+# Full reproduction path: fetch, build, audit, analysis, FE, LP placebos, pressure monitor, site data, manifest
+bidbridge run-all
 
 # Or step by step:
 bidbridge fetch              # Download 5 public data sources
 bidbridge build-panel        # Build 846-week panel + maturity panels
-bidbridge analyze            # Generate figures, tables, regressions
+bidbridge analyze            # Generate descriptive figures, tables, regressions
 bidbridge lp                 # Local projection impulse responses
-bidbridge panel-fe           # Maturity-bucket panel fixed effects
+bidbridge panel-fe           # Headline FE + Thursday-start robustness (Driscoll-Kraay headline)
 bidbridge persistence        # Inventory persistence analysis
 bidbridge stress             # Stress regime analysis
 
@@ -97,7 +97,7 @@ Maturity-bucket panel with bucket and week FE using directly observed NY Fed pos
 delta_position(b,t) = alpha(b) + tau(t) + beta * supply(b,t) + theta * supply * soft_demand(b,t-1) + epsilon
 ```
 
-Buckets: Bills, Short (2-3Y), Belly (5-7Y), Long (10-30Y), TIPS, FRN. Driscoll-Kraay SEs as robustness.
+Buckets: Bills, Short (2-3Y), Belly (5-7Y), Long (10-30Y), TIPS, FRN. Driscoll-Kraay is the headline FE inference surface, with clustered-by-bucket results retained as robustness outputs. Headline FE outputs are withheld if granular coupon bands are unavailable.
 
 ### Bridge Episode Detection
 
@@ -112,13 +112,13 @@ Backward-looking classification using only past data:
 |---------|-------------|
 | `bidbridge fetch` | Fetch all data sources (incremental with `--max-age`) |
 | `bidbridge build-panel` | Build aggregate + maturity panels from raw data |
-| `bidbridge analyze` | Generate all figures, tables, and regressions |
+| `bidbridge analyze` | Generate descriptive figures, tables, and regressions |
 | `bidbridge lp` | Local projection impulse responses |
-| `bidbridge panel-fe` | Maturity-bucket panel fixed-effects regressions |
+| `bidbridge panel-fe` | Headline maturity-bucket FE plus Thursday-start robustness (Driscoll-Kraay headline) |
 | `bidbridge persistence` | Inventory persistence and half-life analysis |
 | `bidbridge stress` | Stress regime analysis (QT, TGA, risk-off) |
 | `bidbridge update` | Incremental refresh + rebuild |
-| `bidbridge run-all` | Full pipeline: fetch + build + analyze |
+| `bidbridge run-all` | Full reproduction path: fetch + build + audit + analysis + FE + LP placebos + pressure monitor + site data + manifest |
 | `bidbridge doctor` | Verify repo structure |
 | `bidbridge list-sources` | Print source registry |
 | `bidbridge demo-data` | Generate synthetic demo data |
@@ -158,7 +158,7 @@ scripts/                      Maturity analysis, verification
 PYTHONDONTWRITEBYTECODE=1 ~/venvs/bidbridge/bin/python -B -m pytest tests/ -x
 ```
 
-29 tests covering data fetchers, merge correctness (reopenings), NaN handling, bridge metric edge cases, stress flag calendar logic, and panel building.
+Deterministic tests cover week anchoring, FE gating, LP placebo outputs, audit artifacts, pressure-monitor outputs, parser logic, merge correctness, and bridge metric edge cases. Live-source fetcher tests remain separately marked with `@pytest.mark.network`.
 
 ## Audit History
 
