@@ -348,7 +348,7 @@ def _install_run_all_stubs(monkeypatch, fe_eligible: bool) -> None:
             [{"stress_flag": "qt_period", "bridge_rate_flagged": 0.2, "bridge_rate_unflagged": 0.1}],
         )
 
-    def fake_write_site_data(panel: pd.DataFrame, lp_results, stress_summary: pd.DataFrame, bridge_summary: pd.DataFrame, output_path: str | Path, pressure_monitor: pd.DataFrame | None = None):
+    def fake_write_site_data(panel: pd.DataFrame, lp_results, stress_summary: pd.DataFrame, bridge_summary: pd.DataFrame, output_path: str | Path, pressure_monitor: pd.DataFrame | None = None, maturity_panel: pd.DataFrame | None = None):
         payload = {
             "panel_stats": {"total_weeks": int(len(panel))},
             "pressure_monitor": [] if pressure_monitor is None else pressure_monitor.assign(week_start=pressure_monitor["week_start"].astype(str)).to_dict(orient="records"),

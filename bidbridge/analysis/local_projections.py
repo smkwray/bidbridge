@@ -63,6 +63,14 @@ def compute_announced_supply_shock(panel: pd.DataFrame) -> pd.Series:
     in the shock definition and (b) using future information to set the
     threshold.
 
+    Note: the expanding quantile at time *t* includes *t* itself, so the
+    current week's announced supply participates in its own threshold.
+    This is standard for expanding-window indicators and does not
+    constitute look-ahead bias (no future data is used), but it means
+    the threshold is not strictly "prior history only."  Shifting the
+    quantile by one row would give a purely pre-t threshold at the cost
+    of losing the first observation; the current choice is deliberate.
+
     Parameters
     ----------
     panel : DataFrame
@@ -499,7 +507,7 @@ def generate_lp_figures(
     Produces three figures:
       1. ``lp_impulse_response.png``  -- Cumulative IRF with 95% HAC CI bands
       2. ``lp_regime_comparison.png`` -- Full-sample vs QT-period IRFs overlaid
-      3. ``lp_shock_distribution.png`` -- Time series + histogram of the shock
+      3. ``lp_beta_distribution.png`` -- Coefficient bar chart + histogram
 
     Parameters
     ----------
@@ -639,10 +647,10 @@ def generate_lp_figures(
         ax_right.set_title("Distribution")
         fig.subplots_adjust(left=0.08, right=0.96, bottom=0.12, top=0.92)
 
-        out = figures_dir / "lp_shock_distribution.png"
+        out = figures_dir / "lp_beta_distribution.png"
         fig.savefig(out, dpi=150)
         plt.close(fig)
-        paths["lp_shock_distribution"] = out
+        paths["lp_beta_distribution"] = out
         logger.info("Saved %s", out)
 
     return paths

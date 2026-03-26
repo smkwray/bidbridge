@@ -59,7 +59,7 @@ def _tag_refunding_weeks(auctions: pd.DataFrame) -> pd.DataFrame:
         on=["_year", "_week"],
         how="left",
     )
-    df["refunding_week"] = df["refunding_week"].fillna(False)
+    df["refunding_week"] = df["refunding_week"].fillna(False).astype(bool)
     df = df.drop(columns=["_month", "_week", "_year", "_term_years"])
     return df
 

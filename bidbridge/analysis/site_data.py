@@ -49,6 +49,7 @@ def build_site_payload(
     stress_summary: pd.DataFrame,
     bridge_summary: pd.DataFrame,
     pressure_monitor: pd.DataFrame | None = None,
+    maturity_panel: pd.DataFrame | None = None,
 ) -> dict[str, object]:
     """Build the JSON payload consumed by the static site."""
     df = panel.copy()
@@ -83,15 +84,30 @@ def build_site_payload(
         value = series.mean()
         return 0.0 if pd.isna(value) else float(value)
 
-    bill_share = df.get("bill_share", pd.Series(0.0, index=df.index))
-    maturity_payload = {
-        "bills": {"avg_dealer_share": _mean_or_zero(df.loc[bill_share > 0.5, "dealer_share_allotment"])},
-        "short_coupon": {"avg_dealer_share": _mean_or_zero(df["dealer_share_allotment"])},
-        "belly_coupon": {"avg_dealer_share": _mean_or_zero(df["dealer_share_allotment"])},
-        "long_coupon": {"avg_dealer_share": _mean_or_zero(df["dealer_share_allotment"])},
-        "tips": {"avg_dealer_share": _mean_or_zero(df["dealer_share_allotment"])},
-        "frns": {"avg_dealer_share": _mean_or_zero(df["dealer_share_allotment"])},
-    }
+    _BUCKET_ORDER = ["bills", "short_coupon", "belly_coupon", "long_coupon", "tips", "frns"]
+    if (
+        maturity_panel is not None
+        and "maturity_bucket" in maturity_panel.columns
+        and "dealer_share" in maturity_panel.columns
+    ):
+        bucket_means = (
+            maturity_panel.groupby("maturity_bucket")["dealer_share"]
+            .mean()
+            .to_dict()
+        )
+        maturity_payload = {
+            b: {"avg_dealer_share": float(bucket_means.get(b, 0.0))}
+            for b in _BUCKET_ORDER
+        }
+    else:
+        # Fallback: overall mean (imprecise, but won't crash)
+        overall = _mean_or_zero(df["dealer_share_allotment"])
+        bill_share = df.get("bill_share", pd.Series(0.0, index=df.index))
+        maturity_payload = {
+            "bills": {"avg_dealer_share": _mean_or_zero(df.loc[bill_share > 0.5, "dealer_share_allotment"])},
+        }
+        for b in _BUCKET_ORDER[1:]:
+            maturity_payload[b] = {"avg_dealer_share": overall}
 
     data_sources = [
         {
@@ -154,6 +170,7 @@ def write_site_data(
     bridge_summary: pd.DataFrame,
     output_path: str | Path,
     pressure_monitor: pd.DataFrame | None = None,
+    maturity_panel: pd.DataFrame | None = None,
 ) -> Path:
     """Write the site JSON payload."""
     output_path = Path(output_path)
@@ -164,6 +181,7 @@ def write_site_data(
         stress_summary,
         bridge_summary,
         pressure_monitor=pressure_monitor,
+        maturity_panel=maturity_panel,
     )
     output_path.write_text(json.dumps(payload, indent=2, allow_nan=False), encoding="utf-8")
     return output_path

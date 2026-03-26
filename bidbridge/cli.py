@@ -380,6 +380,12 @@ def _run_all(start_date: str) -> int:
         else pd.DataFrame(columns=["stress_flag", "bridge_rate_flagged", "bridge_rate_unflagged"])
     )
     pressure_monitor_df = pd.read_csv(extension_outputs["pressure_monitor_csv"], parse_dates=["week_start"])
+    mat_panel_path = processed_outputs.get("maturity_bucket_panel")
+    mat_panel = (
+        pd.read_csv(mat_panel_path, parse_dates=["week_start"])
+        if mat_panel_path and Path(mat_panel_path).exists()
+        else None
+    )
     extension_outputs["site_data"] = write_site_data(
         panel,
         lp_results,
@@ -387,6 +393,7 @@ def _run_all(start_date: str) -> int:
         bridge_summary,
         SITE_DATA_DIR / "bidbridge.json",
         pressure_monitor=pressure_monitor_df,
+        maturity_panel=mat_panel,
     )
 
     manifest_path = write_run_manifest(
