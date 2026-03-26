@@ -9,9 +9,11 @@ __pycache__/
 .venv/
 .ipynb_checkpoints/
 
-# Orchestration framework (local only)
+# Orchestration framework and internal files (never commit)
 do/
 .claude/
+AGENTS.md
+CLAUDE.md
 
 # Logs
 logs/
