@@ -315,7 +315,8 @@
     }
   ],
   "successor_changes": [
-    "Unused local variables renamed; unused stdlib/notebook imports removed; literal f-string prefix removed. Estimator expressions and all retained economic inputs/outputs are unchanged."
+    "Semantic hardening commit bea523aa0aacb65d7c91f2aa22eed374a565d618: align public presentation with retained OPEN-07 v5, quarantine superseded exploratory assets, disable v1 receipt issuance, and stage reconstructed output/manifest with rollback on failure. Reusable receipt helpers are retained.",
+    "Recovered source commit 25094cd3a06a4dc997dcc6531cf33560d552205d remains the historical content anchor. Estimator expressions and all retained economic input/output bytes are unchanged. The semantic successor did not produce the historical v5 outputs."
   ],
   "claim_boundary": {
     "admissible": "short-run aggregate primary-dealer warehousing and inventory response",
@@ -433,5 +434,6 @@
       }
     ]
   },
-  "lineage_limit": "Replacement-input equivalence over the frozen domain only; original normalized Treasury input byte identity is not claimed."
+  "lineage_limit": "Replacement-input equivalence over the frozen domain only; original normalized Treasury input byte identity is not claimed.",
+  "semantic_hardening_commit": "bea523aa0aacb65d7c91f2aa22eed374a565d618"
 }
