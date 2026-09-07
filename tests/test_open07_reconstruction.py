@@ -222,3 +222,42 @@ def test_strict_lag_validator_requires_exact_previous_calendar_week() -> None:
     panel.loc[2, "lagged_dealer_share"] = 0.6
     assert _strict_lag_matches_calendar_week(panel) is False
     assert _driscoll_kraay_bandwidth(675) == 6
+
+
+@pytest.mark.parametrize("metadata_state", ["missing", "wrong_endpoint"])
+def test_reconstruction_failure_preserves_existing_artifacts(tmp_path, metadata_state):
+    source = tmp_path / "source.csv"
+    pd.DataFrame([_source_row()]).to_csv(source, index=False)
+    metadata = tmp_path / "meta.json"
+    if metadata_state == "wrong_endpoint":
+        metadata.write_text(json.dumps({"endpoint": "wrong"}))
+    output, manifest = tmp_path / "output.csv", tmp_path / "manifest.json"
+    output.write_bytes(b"retained output")
+    manifest.write_bytes(b"retained manifest")
+    with pytest.raises((FileNotFoundError, ValueError)):
+        reconstruct(primary_path=source, corroborating_path=source, metadata_path=metadata,
+                    output_path=output, manifest_path=manifest)
+    assert output.read_bytes() == b"retained output"
+    assert manifest.read_bytes() == b"retained manifest"
+
+
+def test_reconstruction_second_replace_failure_rolls_back_pair(tmp_path, monkeypatch):
+    source = tmp_path / "source.csv"
+    pd.DataFrame([_source_row()]).to_csv(source, index=False)
+    metadata = tmp_path / "meta.json"
+    metadata.write_text(json.dumps({"endpoint": "v1/accounting/od/auctions_query"}))
+    output, manifest = tmp_path / "output.csv", tmp_path / "manifest.json"
+    output.write_bytes(b"retained output")
+    manifest.write_bytes(b"retained manifest")
+    replace = Path.replace
+    def fail_manifest(self, destination):
+        if destination == manifest:
+            raise OSError("synthetic promotion failure")
+        return replace(self, destination)
+    monkeypatch.setattr(Path, "replace", fail_manifest)
+    with pytest.raises(OSError, match="synthetic promotion failure"):
+        reconstruct(primary_path=source, corroborating_path=source, metadata_path=metadata,
+                    output_path=output, manifest_path=manifest)
+    assert output.read_bytes() == b"retained output"
+    assert manifest.read_bytes() == b"retained manifest"
+    assert not list(tmp_path.glob(".*"))

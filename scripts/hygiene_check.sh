@@ -46,14 +46,14 @@ fi
 
 # Tracked-eligible source roots. Override via HYGIENE_SCAN_ROOTS env var
 # if your project uses a different layout.
-SCAN_ROOTS=(${HYGIENE_SCAN_ROOTS:-src scripts config configs tests})
+SCAN_ROOTS=(${HYGIENE_SCAN_ROOTS:-bidbridge scripts config configs tests site notebooks provenance docs .github})
 TOP_LEVEL_FILES=(README.md CITATION.cff pyproject.toml setup.py setup.cfg)
 
 # Sibling project roots to also scan for cache leaks (space-separated).
 SIBLING_PROJECTS=(${HYGIENE_SIBLING_PROJECTS:-})
 
 # Scan glob extensions
-SCAN_GLOBS=("*.py" "*.md" "*.yml" "*.yaml" "*.toml" "*.sh" "*.ps1" "*.cfg" "*.ini")
+SCAN_GLOBS=("*.py" "*.md" "*.yml" "*.yaml" "*.toml" "*.sh" "*.ps1" "*.cfg" "*.ini" "*.html" "*.js" "*.json" "*.ipynb")
 
 violations=0
 warnings=0
@@ -71,7 +71,7 @@ gather_files() {
       | while read -r f; do
           [[ -z "$f" ]] && continue
           case "$f" in
-            do/*|docs/*|var/*|data/*|outputs/*|dist/*|.git/*) continue ;;
+            do/*|var/*|data/*|outputs/*|dist/*|.git/*) continue ;;
           esac
           is_self_referential "$f" && continue
           for pat in "${SCAN_GLOBS[@]}"; do
@@ -123,7 +123,7 @@ fail_datamd=""
 for f in ${FILES[@]+"${FILES[@]}"}; do
   [[ -f "$f" ]] || continue
   case "$f" in
-    src/*|tests/*|configs/*)
+    bidbridge/*|src/*|tests/*|config/*|configs/*)
       if hits="$(grep -nE '(/|\.\./)data\.md\b' "$f" 2>/dev/null)"; then
         while IFS= read -r line; do
           [[ -z "$line" ]] && continue

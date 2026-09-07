@@ -26,3 +26,20 @@ def test_file_evidence_fails_closed_for_unavailable_pointer(tmp_path) -> None:
 
     with pytest.raises(FileNotFoundError, match="unavailable"):
         _file_evidence(tmp_path, "pointer.csv", resolve_pointer=True)
+
+
+def test_superseded_receipt_cli_cannot_issue_timing_claim():
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    from bidbridge.producer_receipt import write_receipt
+
+    result = subprocess.run([sys.executable, "-B", "-m", "bidbridge.producer_receipt"],
+                            capture_output=True, text=True, check=False)
+    assert result.returncode != 0
+    assert "Superseded by OPEN-07 v5" in result.stderr
+    source = Path(__file__).resolve().parents[1] / "bidbridge/producer_receipt.py"
+    assert "timing-consistent" not in source.read_text()
+    with pytest.raises(ValueError, match="Superseded"):
+        write_receipt(Path("unused.json"), root=source.parent)

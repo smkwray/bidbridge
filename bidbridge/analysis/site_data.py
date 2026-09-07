@@ -123,6 +123,8 @@ def build_site_payload(
     ]
 
     payload = {
+        "publication_status": "exploratory_not_admitted",
+        "approved_object": False,
         "panel_stats": {
             "total_weeks": int(len(df)),
             "dealer_observed_weeks": int(df["pd_treasury_inventory"].notna().sum()) if "pd_treasury_inventory" in df.columns else 0,

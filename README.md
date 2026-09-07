@@ -2,37 +2,17 @@
 
 **[Live Site](https://smkwray.github.io/bidbridge/)**
 
-Do primary dealers act as short-run balance-sheet bridges when Treasury supply exceeds end-investor demand?
+BidBridge studies the association between announced Treasury supply and aggregate primary-dealer positions.
 
-BidBridge builds an 846-week auction-week panel (2010-2026) from five public federal data sources and studies associations between announced Treasury supply and aggregate primary-dealer positions.
+## Retained findings
 
----
+The approved OPEN-07 v5 headline is a **$9.4536 million contemporaneous increase in aggregate dealer positions per $1 billion of announced offering amounts**, with 95% CI **[$2.5134m, $16.3937m]** across **3,958 maturity-bucket-week observations**. The Monday-aligned specification uses bucket and week fixed effects and Bartlett Driscoll–Kraay inference with bandwidth 6. Its strict-lag confidence interval includes zero.
 
-## Key Findings
+The binary high-supply local projections are descriptive support only. Their expanding p75 threshold includes the current week, and two of five non-overlapping lead tests are significant: they fail clean timing validation. QT and non-QT estimates are descriptive point estimates, not evidence of amplification or a structural Federal Reserve mechanism.
 
-### Same-week high-supply indicator
+Weekly supply and dealer allotment share are inversely correlated. This association does not identify who absorbed marginal supply. Maturity gradients, refunding comparisons, and inventory normalization likewise do not identify inventory costs, price-versus-volume adjustment, terminal holders, or later distribution. The exploratory QT bridge rate (12.2%) is below its reported baseline (12.9%).
 
-At h=0, the coefficient on a binary indicator for weeks when announced aggregate supply exceeds its expanding-window 75th percentile is **+$7.3 billion** of aggregate dealer-position change (p < 0.001, Newey-West HAC). The threshold is computed through the current week, so this is not a continuous offering-amount slope or a strictly prior-history-only shock. These aggregate data do not identify terminal holders or the transactions behind later position normalization.
-
-### QT and non-QT point estimates
-
-The h=0 high-supply-indicator point estimate is **+$10.9 billion** during QT and **+$5.2 billion** outside QT. The bounded association evidence does not treat this contrast as evidence of amplification or an established regime difference. It is not a structural causal estimate of Federal Reserve policy or dealer capacity.
-
-### Supply and dealer share are inversely correlated
-
-Weekly supply volume and dealer allotment share have a correlation of **r = -0.81**. This inverts the naive hypothesis: bigger auction weeks bring in more institutional and foreign investors, so dealers take a smaller *percentage* of allotments -- even as they absorb more in *absolute* dollar terms. Dealer share has declined secularly from 70% (2013) to 37% (2026), reflecting the structural growth of investment fund and foreign participation in Treasury auctions.
-
-### Maturity gradient in dealer absorption
-
-Dealer auction allotments follow a maturity gradient, with higher aggregate shares in bills than in longer coupons. The headline inventory evidence comes from a maturity-bucket panel FE with bucket and week fixed effects using directly observed NY Fed position data by remaining-maturity band. This pattern supports short-run dealer warehousing; it does not identify terminal ownership, customer identity, or holding periods.
-
-### Refunding weeks drive concentrated inventory accumulation
-
-Quarterly refunding weeks (identified by the presence of both a 10-year Note and 30-year Bond auction) show an average inventory change of **+$11.2 billion** vs **-$0.3 billion** in ordinary weeks (p < 0.001, Welch's t-test). Refunding weeks carry higher supply volume but weaker demand metrics: bid-to-cover of 3.02 vs 3.17 (p = 0.006). Auction tails show marginal significance (p = 0.07), suggesting price concessions are absorbed primarily through volume rather than pricing.
-
-### Bridge episodes cluster in stress regimes
-
-85 bridge episodes are identified using a backward-looking classification: heavy supply (rolling 52-week median), positive inventory accumulation, and a z-score > 1 on a trailing 13-week window. These cluster during **risk-off periods** (bridge rate 17.0% vs 11.2% baseline) defined by elevated auction tails, and during **QT periods** (12.2% vs 12.9% baseline). Extended OLS estimates provide descriptive associations with SOMA and time trends; they do not identify a structural policy mechanism or distribution efficiency.
+The live site presents the retained v5 headline. The older site-data payload is explicitly superseded and non-citable; the exploratory notebook is not the approved object. No historical Git identity is reconstructed by the content-recovery bridge.
 
 ## Quick Start
 
@@ -91,7 +71,7 @@ Jorda-style LPs estimate the cumulative dealer-position association with the bin
 cum_inv_change(t,t+h) = alpha + beta * shock(t) + theta * shock(t) * soft_demand(t-1) + controls(t-1) + u
 ```
 
-- **Shock**: Announced supply > expanding-window p75 (pre-auction only, no outcome contamination)
+- **Shock**: Announced supply > expanding-window p75 through the current week (failed clean timing validation; descriptive support only)
 - **Controls**: All lagged one week (supply, dealer share, trend, SOMA change)
 - **Inference**: Newey-West HAC via statsmodels, bandwidth = h+1
 - **Regime surfaces**: high-supply-indicator x QT interaction and total QT point estimate; no promoted amplification claim without inference on the interaction

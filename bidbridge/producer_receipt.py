@@ -9,7 +9,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import importlib.metadata
-import json
 import subprocess
 import tempfile
 from pathlib import Path
@@ -331,6 +330,8 @@ def build_receipt(root: Path, producer_commit: str | None = None) -> dict[str, A
             name: importlib.metadata.version(name)
             for name in ("pandas", "statsmodels", "linearmodels", "numpy")
         },
+        "superseded": True,
+        "promotable": False,
         "claim_boundary": {
             "admissible": (
                 "short-run aggregate primary-dealer warehousing and inventory response "
@@ -346,7 +347,7 @@ def build_receipt(root: Path, producer_commit: str | None = None) -> dict[str, A
                 "structural causal policy mechanism",
             ],
             "lp_status": (
-                "timing-consistent supporting evidence; not the sole identifying pillar"
+                "failed clean timing validation; descriptive support only"
             ),
         },
         "acceptance": {
@@ -364,34 +365,13 @@ def write_receipt(
     root: Path,
     producer_commit: str | None = None,
 ) -> Path:
-    payload = build_receipt(root, producer_commit=producer_commit)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-        newline="\n",
-    )
-    return output_path
+    raise ValueError("Superseded by OPEN-07 v5; v1 receipt issuance is disabled")
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--output",
-        type=Path,
-        default=Path("receipts/open07_bidbridge_producer_receipt.json"),
-    )
-    parser.add_argument("--producer-commit")
-    args = parser.parse_args(argv)
-    root = Path(__file__).resolve().parents[1]
-    output = write_receipt(
-        args.output if args.output.is_absolute() else root / args.output,
-        root=root,
-        producer_commit=args.producer_commit,
-    )
-    print(f"producer_receipt={output}")
-    print(f"sha256={_sha256(output)}")
-    return 0
+    parser.parse_args(argv)
+    parser.error("Superseded by OPEN-07 v5; v1 receipt issuance is disabled and non-promotable.")
 
 
 if __name__ == "__main__":

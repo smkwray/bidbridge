@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -247,15 +248,13 @@ def reconstruct(
     equivalence = _require_source_equivalence(primary, corroborating)
     normalized = normalize_auction_source(primary)
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    normalized.to_csv(output_path, index=False, lineterminator="\n")
-
     if not metadata_path.is_file():
         raise FileNotFoundError(f"QRAWatch query metadata is missing: {metadata_path}")
     query_metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     if query_metadata.get("endpoint") != "v1/accounting/od/auctions_query":
         raise ValueError("Unexpected QRAWatch FiscalData endpoint.")
 
+    output_bytes = normalized.to_csv(index=False, lineterminator="\n").encode("utf-8")
     code_path = Path(__file__).resolve()
     manifest: dict[str, Any] = {
         "reconstruction_version": RECONSTRUCTION_VERSION,
@@ -314,18 +313,41 @@ def reconstruct(
         },
         "replacement_normalized": {
             "path": _display_path(output_path),
-            "bytes": output_path.stat().st_size,
-            "sha256": sha256(output_path),
+            "bytes": len(output_bytes),
+            "sha256": _sha256_bytes(output_bytes),
             "rows": len(normalized),
             "first_auction_date": str(normalized["auction_date"].min()),
             "last_auction_date": str(normalized["auction_date"].max()),
         },
     }
-    manifest_path.write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-        newline="\n",
-    )
+    manifest_bytes = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    destinations = (output_path, manifest_path)
+    if output_path.resolve() == manifest_path.resolve():
+        raise ValueError("Reconstruction output and manifest must be distinct paths")
+    previous = {path: path.read_bytes() if path.exists() else None for path in destinations}
+    staged: list[Path] = []
+    replaced: list[Path] = []
+    try:
+        for path, content in zip(destinations, (output_bytes, manifest_bytes), strict=True):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with tempfile.NamedTemporaryFile(dir=path.parent, prefix=f".{path.name}.", delete=False) as handle:
+                staged.append(Path(handle.name))
+                handle.write(content)
+            if staged[-1].read_bytes() != content:
+                raise ValueError("Reconstruction staging readback failed")
+        for temporary, destination in zip(staged, destinations, strict=True):
+            temporary.replace(destination)
+            replaced.append(destination)
+    except BaseException:
+        for path in reversed(replaced):
+            if previous[path] is None:
+                path.unlink(missing_ok=True)
+            else:
+                path.write_bytes(previous[path])
+        raise
+    finally:
+        for temporary in staged:
+            temporary.unlink(missing_ok=True)
     return output_path, manifest_path, manifest
 
 

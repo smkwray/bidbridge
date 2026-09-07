@@ -276,17 +276,23 @@ def test_build_site_payload_serializes_pressure_monitor(monkeypatch):
     assert payload["pressure_monitor"][0]["week_start"] == "2025-02-03"
 
 
-def test_site_pressure_monitor_contract_present():
-    repo_root = Path(__file__).resolve().parents[1]
-    index_html = (repo_root / "site" / "index.html").read_text(encoding="utf-8")
-    app_js = (repo_root / "site" / "app.js").read_text(encoding="utf-8")
+def test_public_site_uses_retained_v5_and_quarantines_legacy():
+    import json
 
-    assert 'id="pressure-monitor"' in index_html
-    assert 'id="pressure-monitor-empty"' in index_html
-    assert "How the score and category work" in index_html
-    assert "renderPressureMonitor" in app_js
-    assert 'document.getElementById("pressure-monitor-body")' in app_js
-    assert "metricConfig" in app_js
+    root = Path(__file__).resolve().parents[1]
+    page = (root / "site/index.html").read_text()
+    payload = json.loads((root / "site/data/bidbridge.json").read_text())
+    notebook = json.loads((root / "notebooks/exploration.ipynb").read_text())
+    assert payload["publication_status"] == "superseded_non_citable_legacy"
+    assert payload["approved_object"] is False
+    for text in ("3,958", "$9.4536", "$2.5134", "$16.3937", "bandwidth 6",
+                 "includes the current week", "fail clean timing validation",
+                 "Terminal holders and later distribution are not identified"):
+        assert text in page
+    assert "Legacy exploratory notebook; not the approved OPEN-07 v5 object" in "".join(notebook["cells"][0]["source"])
+    assert "app.js" not in page
+    for text in ("2.1x", "pre-auction only", "distributed to final holders", "n&nbsp;=&nbsp;2,584"):
+        assert text not in page
 
 
 def test_ols_robust_handles_singular_design_matrix():
