@@ -4,7 +4,6 @@
   "project": "bidbridge",
   "public_base_commit": "ee1c2acc6e748133933b302608f44063cb94b90d",
   "recovered_source_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
-  "source_successor_commit": "90f08edebe32c11ae4c74a7dc4462c9e97f9dd60",
   "historical_producer_commit": "db8d32fc0879f56dc61717b86fc24d1e7cea0f84",
   "historical_receipt_commit": "dfe9651aa670f73012d5d14664b4ecf443b99ed4",
   "historical_commit_objects_recovered": false,
@@ -435,5 +434,6 @@
     ]
   },
   "lineage_limit": "Replacement-input equivalence over the frozen domain only; original normalized Treasury input byte identity is not claimed.",
-  "semantic_hardening_commit": "bea523aa0aacb65d7c91f2aa22eed374a565d618"
+  "semantic_hardening_commit": "bea523aa0aacb65d7c91f2aa22eed374a565d618",
+  "historical_lint_successor_commit": "90f08edebe32c11ae4c74a7dc4462c9e97f9dd60"
 }
