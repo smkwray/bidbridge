@@ -1,0 +1,437 @@
+{
+  "schema": "source-recovery-bridge.v1",
+  "recovered_on": "2026-09-07",
+  "project": "bidbridge",
+  "public_base_commit": "ee1c2acc6e748133933b302608f44063cb94b90d",
+  "recovered_source_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+  "source_successor_commit": "90f08edebe32c11ae4c74a7dc4462c9e97f9dd60",
+  "historical_producer_commit": "db8d32fc0879f56dc61717b86fc24d1e7cea0f84",
+  "historical_receipt_commit": "dfe9651aa670f73012d5d14664b4ecf443b99ed4",
+  "historical_commit_objects_recovered": false,
+  "original_commit_identity_claimed": false,
+  "historical_receipt": {
+    "path": "receipts/open07_v5_reproduction_evidence.json",
+    "sha256": "23630fda7cb797e41c3ce2d30fb0b6ef5a77d56084ff01716747c0fcb0609ef4"
+  },
+  "basis": "File content hashes bind preserved source and retained results. New commits continue the available public history; they do not recreate or authenticate the missing original commits. No economic production was rerun during recovery.",
+  "source_files": [
+    {
+      "path": "bidbridge/__init__.py",
+      "historical_sha256": "b576d15ec3b4344fd45759081e26534d0407d1f8f45362a8c7136eb2efe0ceb3",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/__main__.py",
+      "historical_sha256": "3129adff95e0f38b87ab34cddfc27082c7892bcaec267ff5d40f160fdf55b44a",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/analysis/__init__.py",
+      "historical_sha256": "ea6fd619aac0f98c69657aa9af6c025af741e868d64d97dff09f9f1ec555ce80",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/analysis/data_audit.py",
+      "historical_sha256": "ddcf4673acb1dd81622aed6a9a5a00fd58a247b1d3b0e129d604d78c9979d0f4",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/analysis/event_studies.py",
+      "historical_sha256": "7fd72ee8712b1d2628bb5b0c7f3ee8a6fbd2924b27f1087ee6e59a7c41ded4a8",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/analysis/local_projections.py",
+      "historical_sha256": "fd435c003eeaa6783f73c515eb0519e983dca1afd8475295cb5288454b873f91",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/analysis/maturity_summary.py",
+      "historical_sha256": "0def6c4d800d70c00de1a0f24b9c95f3e9d30e13c449f879d557dd42dec07b14",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/analysis/outputs.py",
+      "historical_sha256": "4877d06a07fb36f91b35a240da0156655bf0233320d345ed844885ef06411469",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/analysis/panel_fe.py",
+      "historical_sha256": "0a865c7920ec90f402e56fcdc11be59be048cbf168c3a5f5d4cf6ebf4b088a5b",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/analysis/persistence.py",
+      "historical_sha256": "8483f819bdd3f3b25c1e46e69f1bd4e169b6e341ded58afc2445dc481941b9c2",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/analysis/pressure_monitor.py",
+      "historical_sha256": "23afaee09ac5a53d15efa4afaf2496c68595b17b5745843b95aaaaaf60176be1",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/analysis/promotion.py",
+      "historical_sha256": "bf7b5a6d8f45ae34a731805563a7e63a8a06a8921240879a60557eb0edd8182d",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/analysis/ratewall_contracts.py",
+      "historical_sha256": "f79c5429706eab1ace15415c905d5f87ecb10e068dd6d629dd140dedbae2d447",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/analysis/regressions.py",
+      "historical_sha256": "b38f7bac1ea4687aa797a78dc491699fdfc9b5f507f04a468d131d158e928b2e",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob",
+      "successor_sha256": "e3a5f2a0ab965ed6bc98cbf665ef6a0d116b7486860992c17013469eccd99780"
+    },
+    {
+      "path": "bidbridge/analysis/site_data.py",
+      "historical_sha256": "34e97a208f2834af414d488109f694136a6eb869f7e334e2809cf282832553ca",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/cli.py",
+      "historical_sha256": "1df286b7a23eee642319ef0d7247054e1f58fb21f04f4b7abcf6b31460043243",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob",
+      "successor_sha256": "4758f7c7827d59fad1be8c41ad15c80da2b160183a281d346e26fd22d7e0c407"
+    },
+    {
+      "path": "bidbridge/config.py",
+      "historical_sha256": "d889dc3dc432b1947ca8cccb36dcdb30c3358cbda785e3396ca70241a590b71b",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/data/__init__.py",
+      "historical_sha256": "e679b73c298950e27ff41c73c4a51186177bbc2ec5793063a18eb6e55c4edff7",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/data/pipeline.py",
+      "historical_sha256": "bf178dc5637d71d4301d932dd68c3693ca496094f566f0e1c41d417dbc1b4836",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/data/registry.py",
+      "historical_sha256": "32c2ff8359930f006d512362d9e0c032e6a64a7041201dd429eb9699e082dc6d",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/data/sources/__init__.py",
+      "historical_sha256": "37afeaea340fdd935b461d866e40c0e9d234f65e3f511368760fcd7a698fcc53",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/data/sources/base.py",
+      "historical_sha256": "09fc449b26e3188b2101c71bd98fec037c09f588500273e99d35e8c6de41cdcc",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/data/sources/h8.py",
+      "historical_sha256": "e5acb4a2e2c733151d296724eb7c490c6abd7c59f007f414e557b2e6d50b1825",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/data/sources/nyfed_pd.py",
+      "historical_sha256": "cbb328ce929de346037f00623151e4e6af625de0aec43b62c873e21559be7324",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/data/sources/soma.py",
+      "historical_sha256": "8f856858bd1ac46caa4e722e8d558e522cddb13535482f0153db2f40f4afef2c",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/data/sources/trace_treasury.py",
+      "historical_sha256": "b9bc3c879b32f4e59ba69cfbbe1246c35224e480c9d5d686609539bdc814ffcc",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/data/sources/treasury_auctions.py",
+      "historical_sha256": "16ae154ff9c83189fc524ede18114874d7e74213ada1dfd24a209e23ce1d6f69",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob",
+      "successor_sha256": "51139f1935125d3af03783b7a290f8f80660599276e6f066ab82d09527f62841"
+    },
+    {
+      "path": "bidbridge/data/sources/treasury_investor_class.py",
+      "historical_sha256": "74543068840f12c1f899b8f7b0536d7f73d84914ee87d629d442db52ad491f12",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/demo.py",
+      "historical_sha256": "4107e2f4ffba6ae8cf45665e4f9f38dea8712a3febfe0ca32ffff3815dad1ada",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/features/__init__.py",
+      "historical_sha256": "2f2ca25ff6926ead13d641327c53a7dfadced05078269cfe59e5007908f2ab56",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/features/auction_week.py",
+      "historical_sha256": "3f96322752a0211d66a95cd1d8da79820fa20f877be41d5718ce66b68a2f883f",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/features/bridge_metrics.py",
+      "historical_sha256": "af44a8d998c107d06c5551b377056023e072c7897c86db97eb2c63df246636ad",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/features/maturity_panel.py",
+      "historical_sha256": "ea6cf23df66c10566d53b090d3e95a1f2e610a0511ce522006d6b42cccb1a653",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob",
+      "successor_sha256": "52545ca72caa3eb8bf7e7530225b829c4b7810d3431f1a136b56f07e058579af"
+    },
+    {
+      "path": "bidbridge/features/stress_flags.py",
+      "historical_sha256": "ef57936e329b0c319db6c17498694283e8de1f31e1bad177a877588c0bf0783c",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/open07_reconstructed_receipt.py",
+      "historical_sha256": "10cdbfe970d6ffda55d440e0f3e4b44c2d2aa59cb6c56bbb7abfcaa692e39d69",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/open07_reconstructed_receipt.sync-conflict-20260731-144013-67W7VGG.py",
+      "historical_sha256": "451442a07078dd8c23c36151e59d759ca0f03449353bdd2c875ebb200a799b5a",
+      "recovery_location": "verified_private_conflict_archive",
+      "status": "exact_archived_copy_excluded_from_active_package"
+    },
+    {
+      "path": "bidbridge/open07_reconstruction.py",
+      "historical_sha256": "39b19cda9d23d72535eeb06dd47cca82f9707c638b7845251f61d7a683fbedca",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/open07_reconstruction.sync-conflict-20260731-124815-RBT3XZX.py",
+      "historical_sha256": "818cf268eaa4328b49a5bc28b8d2b07ac1284682ae0d71d56031bdfdf57ec6c9",
+      "recovery_location": "verified_private_conflict_archive",
+      "status": "exact_archived_copy_excluded_from_active_package"
+    },
+    {
+      "path": "bidbridge/open07_reconstruction.sync-conflict-20260731-131112-RBT3XZX.py",
+      "historical_sha256": "818cf268eaa4328b49a5bc28b8d2b07ac1284682ae0d71d56031bdfdf57ec6c9",
+      "recovery_location": "verified_private_conflict_archive",
+      "status": "exact_archived_copy_excluded_from_active_package"
+    },
+    {
+      "path": "bidbridge/open07_reconstruction.sync-conflict-20260731-144013-67W7VGG.py",
+      "historical_sha256": "c05ced684ddeb42f9aed563a9fdf5e322cf06b260d5df2b2f453d97f4aa38d20",
+      "recovery_location": "verified_private_conflict_archive",
+      "status": "exact_archived_copy_excluded_from_active_package"
+    },
+    {
+      "path": "bidbridge/open07_reproduce.py",
+      "historical_sha256": "48a5f84cb59c0cf65d4098d91ac3bf1c35477de668a8526e9879073a1e54f3a9",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/open07_reproduce.sync-conflict-20260731-144013-67W7VGG.py",
+      "historical_sha256": "c3d74b4f1e07c4154ded3f86de4159f2e6e314e14bbdbed3d6019d40f31e83af",
+      "recovery_location": "verified_private_conflict_archive",
+      "status": "exact_archived_copy_excluded_from_active_package"
+    },
+    {
+      "path": "bidbridge/paths.py",
+      "historical_sha256": "f45213fa1cd9052e453545ce7b0adac2b30307ad93eb510a3bbab69e3a28aaeb",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/producer_receipt.py",
+      "historical_sha256": "c4d87fea2276042e5ff37bc03669b530c8cac0fcf8b117251c4c62ffd64c934d",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/run_manifest.py",
+      "historical_sha256": "9f48f1a0aab72774d896051e5ba831f4849f0a1ead39bd72688d100ec3d9364b",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "bidbridge/schemas.py",
+      "historical_sha256": "49595cc181020d84d85a88a9ea0533ed653912a7c4ea3787f07642292f5089c1",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "configs/sources.yml",
+      "historical_sha256": "15d1a4d99725d22e817fa46f3c6565dd3a999329c261fa110498c4b701026f76",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "configs/study.yml",
+      "historical_sha256": "9b2e722d11da72bda02d8cfd839d3686919e45db64e4c9df4a4799c5d96e262d",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "pyproject.toml",
+      "historical_sha256": "bacb7743f314430967eab54b8d067ae19cb7500722f8eb6f4258e548c90a3476",
+      "exact_blob_commit": "25094cd3a06a4dc997dcc6531cf33560d552205d",
+      "status": "exact_receipted_blob"
+    }
+  ],
+  "successor_changes": [
+    "Unused local variables renamed; unused stdlib/notebook imports removed; literal f-string prefix removed. Estimator expressions and all retained economic inputs/outputs are unchanged."
+  ],
+  "claim_boundary": {
+    "admissible": "short-run aggregate primary-dealer warehousing and inventory response",
+    "not_identified": [
+      "terminal ownership",
+      "final-holder incidence",
+      "customer identity or bilateral trade",
+      "bank preference",
+      "deposit destruction or settlement incidence",
+      "structural dealer-capacity elasticity",
+      "structural causal policy mechanism"
+    ]
+  },
+  "retained_file_checks": {
+    "versioned_artifacts": [
+      {
+        "path": "data/processed/open07_v5/auction_week_panel.csv",
+        "sha256": "653cddef2a17921e6078b1f8dc881888a215ef0f94b7d0d2c4149b224f2bdd2d"
+      },
+      {
+        "path": "data/processed/open07_v5/maturity_bucket_panel.csv",
+        "sha256": "2bae997fa7d67d9e6b289ececcb9b660cde10ea18b1c3bd4ed56c272ba73e2f3"
+      },
+      {
+        "path": "data/processed/open07_v5/maturity_wide_panel.csv",
+        "sha256": "4ea861abea670e2cde47de9f37fd1a1ffb90211cc50d6210ff4dc395fbb8c852"
+      },
+      {
+        "path": "outputs/open07_v5/tables/lp_results.csv",
+        "sha256": "fa8c7f075dcc67fe52510d1fd11d3c263a24acf97dd42f820323201e04902bd2"
+      },
+      {
+        "path": "outputs/open07_v5/tables/lp_placebo_results.csv",
+        "sha256": "045f69849448c1404b7e893a01c89ece4ee1d7f04785a615b1d75eef81246111"
+      },
+      {
+        "path": "outputs/open07_v5/tables/panel_fe_results.csv",
+        "sha256": "c83ff6ecbd52ac9e81c0dbc1a4286955a9edd8dd37c695f509c87d4325a1bc35"
+      },
+      {
+        "path": "outputs/open07_v5/tables/panel_fe_results_thursday.csv",
+        "sha256": "24228ebbc3780e45ca6f2dcc8f09650008ca947adfacc6e1daff833a0d9c04e5"
+      },
+      {
+        "path": "outputs/open07_v5/tables/regression_refunding_test.csv",
+        "sha256": "48f66d9943c93a39cf53bd8c5e7cf1bc056e02c053725c0273ef0d38352b543f"
+      },
+      {
+        "path": "outputs/open07_v5/tables/maturity_bucket_summary.csv",
+        "sha256": "c5be5dacde4854786fdaa41a8be2f1bd86f833d39d1406bcbdf4aa41ae82c296"
+      },
+      {
+        "path": "outputs/open07_v5/tables/persistence_summary.csv",
+        "sha256": "d8d8a104372eaaf39264d724507b5933b67221ca583391e94800e128ef91cff1"
+      },
+      {
+        "path": "outputs/open07_v5/tables/bidbridge_promotion_summary.csv",
+        "sha256": "6e922b541571be5bf4e8fabd33270940eee2d122691b2436d34d2e99b4c87469"
+      },
+      {
+        "path": "outputs/open07_v5/bidbridge_promotion_memo.md",
+        "sha256": "96781d6f2302ebdf1ac8a7068b5fcbd1629db179b1c8f6580a23871ff063c0ae"
+      },
+      {
+        "path": "outputs/open07_v5/tables/bidbridge_ratewall_dealer_warehousing_support.csv",
+        "sha256": "f5a241691482db7b1dc32c69182c1c41e30fff51d3117c18e22a7a19e06a59d0"
+      }
+    ],
+    "other_estimator_inputs": [
+      {
+        "path": "data/raw/treasury/investor_class_allotments.csv",
+        "sha256": "252968cad67a2610acf29285e64f375c17ce1ede00225b9711ad8e793155769c"
+      },
+      {
+        "path": "data/raw/treasury/investor_class_allotments_manifest.json",
+        "sha256": "76a72176d658ddbd45bc75da3520f0060e97aacafed04f251c7f1b860bbccf19"
+      },
+      {
+        "path": "data/raw/nyfed/primary_dealer_stats.csv",
+        "sha256": "52de2283ec2980a57255dcdb6fd75538cba342ea9cb511781cc1d9ed4f590c0d"
+      },
+      {
+        "path": "data/raw/nyfed/primary_dealer_stats_manifest.json",
+        "sha256": "c4ba53b6f9fbf06628e54350f24c7af9489d52de817f82786f73baf6deada81b"
+      },
+      {
+        "path": "data/raw/nyfed/soma_holdings.csv",
+        "sha256": "e41ffb36a2878947a5a6d05aab4af0d4eb6cae603381b022dc3bb21caf5be098"
+      },
+      {
+        "path": "data/raw/nyfed/soma_holdings_manifest.json",
+        "sha256": "2a8c19fefa56f712ec4d02ef3a4a131b4741bff4c08b820f17e1ca66b0ab42e2"
+      },
+      {
+        "path": "configs/study.yml",
+        "sha256": "9b2e722d11da72bda02d8cfd839d3686919e45db64e4c9df4a4799c5d96e262d"
+      }
+    ],
+    "replacement_source_inputs": [
+      {
+        "path": "data/raw/treasury/open07_reconstruction_v2/source/qrawatch_auctions_query.csv",
+        "sha256": "26aafe7cd98e8d5231315473bca7758dde7487e532a46322d10216ec23c92329"
+      },
+      {
+        "path": "data/raw/treasury/open07_reconstruction_v2/source/qrawatch_auctions_query_meta.json",
+        "sha256": "3a814d5108f08f1ff7b1e3ea8ec4730ae72c0954065158180130158996402ed0"
+      },
+      {
+        "path": "data/raw/treasury/open07_reconstruction_v2/source/buycurve_auctions_query.csv",
+        "sha256": "b9407def02f98e110b88ca1b9a8291a4527a669e20d7850a5f3863e77880987e"
+      },
+      {
+        "path": "data/raw/treasury/open07_reconstruction_v2/treasury_auctions_reconstructed.csv",
+        "sha256": "d73a723984db7cc4bfef7363e9a8f63a1a932404c91833fb2b6c33e3b3a9f681"
+      }
+    ]
+  },
+  "lineage_limit": "Replacement-input equivalence over the frozen domain only; original normalized Treasury input byte identity is not claimed."
+}
