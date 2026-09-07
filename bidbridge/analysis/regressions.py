@@ -175,7 +175,7 @@ def run_refunding_test(panel: pd.DataFrame) -> pd.DataFrame:
         # Welch-Satterthwaite degrees of freedom
         num = (r_std**2 / r_n + o_std**2 / o_n) ** 2
         den = (r_std**2 / r_n)**2 / (r_n - 1) + (o_std**2 / o_n)**2 / (o_n - 1)
-        dof = num / den if den > 0 else r_n + o_n - 2
+        _dof = num / den if den > 0 else r_n + o_n - 2
 
         # P-value (two-sided, normal approx for large samples)
         from math import erfc, sqrt

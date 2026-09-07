@@ -173,7 +173,7 @@ def pivot_maturity_panel_wide(maturity_panel: pd.DataFrame) -> pd.DataFrame:
     Useful for regressions that need maturity-specific regressors in the same row.
     """
     mp = maturity_panel.copy()
-    buckets = sorted(mp["maturity_bucket"].unique())
+    _buckets = sorted(mp["maturity_bucket"].unique())
 
     # Columns to pivot
     value_cols = ["awarded_amount", "dealer_share", "weighted_bid_to_cover",

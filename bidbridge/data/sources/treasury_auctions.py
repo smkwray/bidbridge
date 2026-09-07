@@ -8,7 +8,6 @@ Returns completed auction results with bid-to-cover, yields, amounts, and bidder
 
 from __future__ import annotations
 
-import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path

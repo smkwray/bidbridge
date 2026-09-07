@@ -218,7 +218,7 @@ def _panel_fe() -> int:
         ds = finalize_primary_dealer_dataframe(dealer_raw, week_definition=week_definition)
         bo = build_bucket_outcomes(mp, ds, headline_strict=True, week_definition=week_definition)
     except ValueError as exc:
-        print(f"panel_fe_status=ineligible")
+        print("panel_fe_status=ineligible")
         print(f"panel_fe_reason={exc}")
         return 1
 
