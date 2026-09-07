@@ -32,6 +32,10 @@ _HISTORICAL_MARKERS = (
     "old",
     "pre-2009",
     "pre 2009",
+    "sep 2009",
+    "september 2009",
+    "jan-2000",
+    "aug-2001",
 )
 
 
@@ -100,7 +104,7 @@ def _discover_allotment_links() -> dict[str, str]:
         classified = _classify_allotment_link(abs_href, text)
         if classified is None:
             continue
-        links[classified] = abs_href
+        links.setdefault(classified, abs_href)
 
     if not links:
         all_links = [urljoin(FILE_BASE, href) for href, _ in _extract_anchor_hrefs(html)]
@@ -140,17 +144,18 @@ def _normalize_column_name(col: str) -> str:
     patterns = [
         (r"issue.*date", "issue_date"),
         (r"security.*type", "security_type"),
+        (r"security.*term", "security_term"),
         (r"coupon.*rate|spread", "coupon_rate"),
         (r"cusip", "cusip"),
         (r"maturity.*date", "maturity_date"),
         (r"total.*issue", "total_issue_amount"),
         (r"federal.*reserve|soma", "fed_reserve_share"),
-        (r"depository.*institution", "depository_share"),
-        (r"individual", "individuals_share"),
+        (r"deposi.*tory.*insti.*tution", "depository_share"),
+        (r"individual|individ", "individuals_share"),
         (r"dealer.*broker", "dealer_share"),
         (r"pension.*retire|ins.*co", "pension_insurance_share"),
-        (r"investment.*fund", "investment_funds_share"),
-        (r"foreign.*international", "foreign_share"),
+        (r"invest.*ment.*fund", "investment_funds_share"),
+        (r"foreign.*interna", "foreign_share"),
         (r"other", "other_share"),
         (r"auction.*high.*rate|high.*rate", "auction_high_rate"),
     ]

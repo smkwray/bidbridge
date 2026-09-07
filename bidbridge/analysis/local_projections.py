@@ -1,9 +1,8 @@
 """Jorda-style local projections for dealer inventory impulse responses.
 
-Estimates the dynamic causal effect of *ex ante* supply shocks on cumulative
-dealer inventory changes using the local projections (LP) method of Jorda
-(2005).  For each horizon h = 0, 1, ..., H a separate OLS regression is
-estimated:
+Estimates the dynamic association between a binary high-supply-week indicator
+and cumulative dealer position changes using Jorda-style local projections.
+For each horizon h = 0, 1, ..., H a separate OLS regression is estimated:
 
     cum_inv_change_{t,t+h} = alpha_h
                             + beta_h  * shock_t
@@ -11,9 +10,12 @@ estimated:
                             + Gamma_h * X_{t-1}
                             + u_{t+h}
 
-The supply shock is defined using ONLY pre-auction information:
+The high-supply indicator uses the pre-auction announced offering amount:
 
     announced_supply_shock_t = 1{announced_amount_total_t > expanding-p75_t}
+
+The expanding threshold includes the current week's announced amount. It uses
+no future values, but is not a strictly prior-history-only threshold.
 
 The interaction ``shock * lagged_soft_demand`` captures the "bridge pressure"
 treatment -- weeks where large announced supply coincides with weak
@@ -33,22 +35,21 @@ import logging
 from pathlib import Path
 from typing import Any
 
-import matplotlib
-matplotlib.use("Agg")
-
-import matplotlib.pyplot as plt          # noqa: E402
-import matplotlib.gridspec as gridspec   # noqa: E402
-import numpy as np                       # noqa: E402
-import pandas as pd                      # noqa: E402
-import statsmodels.api as sm             # noqa: E402
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import statsmodels.api as sm
+from matplotlib import gridspec
 
 from bidbridge.features.stress_flags import add_stress_flags
+
+plt.switch_backend("Agg")
 
 logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# 0.  Ex ante supply shock construction (expanding-window, centralized)
+# 0.  Binary high-supply indicator construction (expanding-window, centralized)
 # ---------------------------------------------------------------------------
 
 def compute_announced_supply_shock(panel: pd.DataFrame) -> pd.Series:

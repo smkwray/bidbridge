@@ -4,7 +4,6 @@ Estimates within-week, across-curve effects of auction supply on primary
 dealer inventory using a two-way fixed-effects specification:
 
     delta_position_{b,t} = alpha_b + tau_t + beta * announced_amount_{b,t}
-                         + theta * announced_amount_{b,t} * lagged_soft_demand_{b,t-1}
                          + epsilon_{b,t}
 
 Where:
@@ -13,9 +12,9 @@ Where:
     alpha_b = bucket fixed effect
     tau_t = week fixed effect
 
-The key insight: if dealers absorb supply where it lands on the curve, beta
-should be positive and significant within buckets, controlling for week-level
-shocks via week FE.
+The primary estimate is supply-only so the fitted sample cannot be selected by
+same-auction allotment outcomes.  A separately labeled robustness adds the
+strict previous-calendar-week dealer share without substituting current values.
 
 Dealer position mapping:
     pd_bills_position  -> bills
@@ -45,12 +44,11 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-import matplotlib
-matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
-import matplotlib.pyplot as plt  # noqa: E402
-import numpy as np               # noqa: E402
-import pandas as pd              # noqa: E402
+plt.switch_backend("Agg")
 
 logger = logging.getLogger(__name__)
 
@@ -253,9 +251,22 @@ def build_bucket_outcomes(
         panel.groupby("maturity_bucket")["bucket_position"].diff()
     )
 
-    # Step 5: Lagged dealer share (soft demand proxy)
-    panel["lagged_dealer_share"] = (
-        panel.groupby("maturity_bucket")["dealer_share"].shift(1)
+    # Step 5: Strict previous-calendar-week dealer share.  Use a dated join,
+    # not a row shift, so a missing calendar week can never silently become a
+    # longer and undeclared lag.  Missing values remain missing; the current
+    # auction outcome is never substituted.
+    lagged_share = panel[
+        ["week_start", "maturity_bucket", "dealer_share"]
+    ].copy()
+    lagged_share["week_start"] = lagged_share["week_start"] + pd.Timedelta(days=7)
+    lagged_share = lagged_share.rename(
+        columns={"dealer_share": "lagged_dealer_share"}
+    )
+    panel = panel.merge(
+        lagged_share,
+        on=["week_start", "maturity_bucket"],
+        how="left",
+        validate="one_to_one",
     )
 
     # Step 6: Compute soft demand indicator — above-median dealer share
@@ -301,31 +312,52 @@ def build_bucket_outcomes(
 # 2.  Panel FE regression suite
 # ---------------------------------------------------------------------------
 
+def _driscoll_kraay_bandwidth(n_periods: int) -> int:
+    """Return the explicit Bartlett bandwidth used by linearmodels 7.0."""
+    if n_periods < 1:
+        raise ValueError("Driscoll-Kraay inference requires at least one period.")
+    return int(np.floor(4 * (n_periods / 100) ** (2 / 9)))
+
+
+def _strict_lag_matches_calendar_week(panel: pd.DataFrame) -> bool:
+    """Verify that the stored lag is exactly t-7 days, including missingness."""
+    expected = panel[["week_start", "maturity_bucket", "dealer_share"]].copy()
+    expected["week_start"] = pd.to_datetime(expected["week_start"]) + pd.Timedelta(days=7)
+    expected = expected.rename(columns={"dealer_share": "expected_lag"})
+    check = panel.merge(
+        expected,
+        on=["week_start", "maturity_bucket"],
+        how="left",
+        validate="one_to_one",
+    )
+    actual = pd.to_numeric(check["lagged_dealer_share"], errors="coerce")
+    wanted = pd.to_numeric(check["expected_lag"], errors="coerce")
+    return bool(np.all(np.isclose(actual, wanted, equal_nan=True)))
+
+
 def run_bucket_fe_regression(panel: pd.DataFrame) -> dict[str, object]:
     """Run panel fixed-effects regressions of dealer inventory changes on supply.
 
-    Specifications:
-        1. 'pooled'     : OLS without fixed effects (baseline)
-        2. 'bucket_fe'  : Bucket (entity) fixed effects only
-        3. 'twoway_fe'  : Bucket + week (entity + time) fixed effects
-        4. 'interaction': Two-way FE + supply x lagged_soft_demand interaction
+    The primary specification is supply-only with maturity-bucket and week
+    fixed effects.  A separately labeled robustness adds only the strict
+    previous-calendar-week dealer share and never substitutes the current
+    auction outcome.
 
-    Uses ``linearmodels.panel.PanelOLS`` with clustered standard errors by
-    bucket.  Falls back to ``statsmodels`` OLS with dummies if linearmodels
-    is unavailable.
+    Uses ``linearmodels.panel.PanelOLS``.  The headline covariance is
+    Driscoll-Kraay with an explicit Bartlett kernel and bandwidth.
 
     Parameters
     ----------
     panel : DataFrame
         Output of ``build_bucket_outcomes``.  Must contain: week_start,
-        maturity_bucket, delta_position, announced_amount, and
-        lagged_dealer_share.
+        maturity_bucket, delta_position, and announced_amount.  The optional
+        strict-lag robustness also uses lagged_dealer_share.
 
     Returns
     -------
     dict
-        Keys: 'pooled', 'bucket_fe', 'twoway_fe', 'interaction'.
-        Values: fitted model result objects (PanelOLS or OLS results).
+        Fitted supply-only models, the strict-lag robustness, and exact sample
+        and covariance metadata.
     """
     df = panel.copy()
     n_theoretical = len(df)
@@ -349,14 +381,16 @@ def run_bucket_fe_regression(panel: pd.DataFrame) -> dict[str, object]:
     # Normalize supply to billions for interpretable coefficients
     df["supply_B"] = df["announced_amount"] / 1e9
 
-    # Fill lagged variables that are NaN at series start
-    df["lagged_dealer_share"] = df["lagged_dealer_share"].fillna(
-        df["dealer_share"]
-    )
-    df["lagged_soft_demand"] = df["lagged_soft_demand"].fillna(0)
-
-    # Interaction term
-    df["supply_x_soft_demand"] = df["supply_B"] * df["lagged_soft_demand"]
+    if not _strict_lag_matches_calendar_week(panel):
+        raise RuntimeError(
+            "lagged_dealer_share is not the strict previous-calendar-week value."
+        )
+    strict_lag = df.dropna(subset=["lagged_dealer_share"]).copy()
+    if len(strict_lag) < 20:
+        raise ValueError(
+            "Insufficient strict-lag observations after dropping missing values: "
+            f"{len(strict_lag)} rows."
+        )
 
     # NOTE: With only 6 maturity buckets the number of clusters is well below
     # the ~30-cluster rule of thumb for cluster-robust standard errors.
@@ -366,20 +400,27 @@ def run_bucket_fe_regression(panel: pd.DataFrame) -> dict[str, object]:
     # under cross-sectional and temporal dependence regardless of cluster
     # count.
 
-    # Attempt to use linearmodels for proper panel FE estimation
-    try:
-        results = _run_with_linearmodels(df)
-    except Exception as exc:
-        logger.warning(
-            "linearmodels failed (%s), falling back to statsmodels.", exc
-        )
-        results = _run_with_statsmodels(df)
+    primary_bandwidth = _driscoll_kraay_bandwidth(int(df["week_start"].nunique()))
+    strict_bandwidth = _driscoll_kraay_bandwidth(
+        int(strict_lag["week_start"].nunique())
+    )
+    results = _run_with_linearmodels(
+        df,
+        strict_lag,
+        primary_bandwidth=primary_bandwidth,
+        strict_bandwidth=strict_bandwidth,
+    )
 
-    # Report actual estimation n from the model (linearmodels may drop
-    # additional rows with missing lagged variables beyond our dropna).
-    twoway = results.get("twoway_fe")
+    twoway = results.get("twoway_fe_supply_only_driscoll_kraay")
     n_estimated = _extract_nobs(twoway) if twoway else n_actual
+    estimation_rows = df.dropna(subset=["delta_position", "supply_B"])
+    if len(estimation_rows) != n_estimated:
+        raise RuntimeError(
+            "Could not bind the panel-FE estimation sample: "
+            f"prepared {len(estimation_rows)} rows but the model used {n_estimated}."
+        )
 
+    n_raw_panel_weeks = int(panel["week_start"].nunique())
     _sample_info = {
         "n_theoretical": n_theoretical,
         "n_after_dropna": n_actual,
@@ -387,6 +428,28 @@ def run_bucket_fe_regression(panel: pd.DataFrame) -> dict[str, object]:
         "pct_retained": round(100 * n_estimated / n_theoretical, 1) if n_theoretical else 0,
         "n_weeks": n_weeks,
         "n_buckets": n_buckets,
+        "n_estimation_weeks": int(estimation_rows["week_start"].nunique()),
+        "n_raw_panel_weeks": n_raw_panel_weeks,
+        "first_difference_week_loss": (
+            n_raw_panel_weeks - int(estimation_rows["week_start"].nunique())
+        ),
+        "sample_start": estimation_rows["week_start"].min().date().isoformat(),
+        "sample_end": estimation_rows["week_start"].max().date().isoformat(),
+    }
+    strict_result = results["twoway_fe_strict_lag_driscoll_kraay"]
+    strict_n = _extract_nobs(strict_result)
+    if strict_n != len(strict_lag):
+        raise RuntimeError(
+            "Could not bind the strict-lag robustness sample: "
+            f"prepared {len(strict_lag)} rows but the model used {strict_n}."
+        )
+    _strict_lag_sample_info = {
+        "n_estimated": strict_n,
+        "n_estimation_weeks": int(strict_lag["week_start"].nunique()),
+        "sample_start": strict_lag["week_start"].min().date().isoformat(),
+        "sample_end": strict_lag["week_start"].max().date().isoformat(),
+        "current_share_substitutions": 0,
+        "strict_previous_calendar_week_verified": True,
     }
     logger.info(
         "Panel FE sample: %d theoretical -> %d after dropna -> %d in estimation (%.1f%%)",
@@ -394,121 +457,83 @@ def run_bucket_fe_regression(panel: pd.DataFrame) -> dict[str, object]:
     )
 
     results["_sample_info"] = _sample_info
+    results["_strict_lag_sample_info"] = _strict_lag_sample_info
     results["_metadata"] = {
         "uses_granular_bands": bool(panel.attrs.get("uses_granular_bands", False)),
         "headline_fe_eligible": bool(panel.attrs.get("headline_fe_eligible", False)),
         "week_definition": panel.attrs.get("week_definition", "monday"),
+        "headline_specification": "supply_only_two_way_fixed_effects",
+        "headline_covariance": "Driscoll-Kraay",
+        "driscoll_kraay_kernel": "bartlett",
+        "driscoll_kraay_bandwidth": primary_bandwidth,
+        "strict_lag_driscoll_kraay_bandwidth": strict_bandwidth,
+        "current_share_substitutions": 0,
     }
     return results
 
 
-def _run_with_linearmodels(df: pd.DataFrame) -> dict[str, object]:
+def _run_with_linearmodels(
+    df: pd.DataFrame,
+    strict_lag: pd.DataFrame,
+    *,
+    primary_bandwidth: int,
+    strict_bandwidth: int,
+) -> dict[str, object]:
     """Panel FE estimation via linearmodels.panel.PanelOLS."""
     from linearmodels.panel import PanelOLS, PooledOLS
 
     # Set multi-index required by linearmodels: (entity, time)
     df = df.copy()
     df["maturity_bucket"] = df["maturity_bucket"].astype("category")
-    df["week_id"] = pd.Categorical(df["week_start"])
-
     df = df.set_index(["maturity_bucket", "week_start"])
+    strict_lag = strict_lag.copy()
+    strict_lag["maturity_bucket"] = strict_lag["maturity_bucket"].astype("category")
+    strict_lag = strict_lag.set_index(["maturity_bucket", "week_start"])
 
     dep = df["delta_position"]
     results = {}
 
-    # ---- Spec 1: Pooled OLS (no FE) --------------------------------------
-    exog_pooled = df[["supply_B", "lagged_dealer_share"]].copy()
+    # ---- Supply-only primary family --------------------------------------
+    exog_pooled = df[["supply_B"]].copy()
     exog_pooled.insert(0, "const", 1.0)
     mod_pooled = PooledOLS(dep, exog_pooled)
-    results["pooled"] = mod_pooled.fit(cov_type="clustered", cluster_entity=True)
-    logger.info("Pooled OLS: n=%d", results["pooled"].nobs)
-
-    # ---- Spec 2: Bucket FE only ------------------------------------------
-    exog_fe = df[["supply_B", "lagged_dealer_share"]]
-    mod_bucket = PanelOLS(dep, exog_fe, entity_effects=True)
-    results["bucket_fe"] = mod_bucket.fit(cov_type="clustered", cluster_entity=True)
-    logger.info("Bucket FE: n=%d", results["bucket_fe"].nobs)
-
-    # ---- Spec 3: Two-way FE (bucket + week) ------------------------------
-    mod_twoway = PanelOLS(dep, exog_fe, entity_effects=True, time_effects=True)
-    results["twoway_fe"] = mod_twoway.fit(cov_type="clustered", cluster_entity=True)
-    logger.info("Two-way FE: n=%d", results["twoway_fe"].nobs)
-
-    # ---- Spec 4: Two-way FE + interaction --------------------------------
-    exog_interact = df[["supply_B", "lagged_dealer_share", "supply_x_soft_demand"]]
-    mod_interact = PanelOLS(
-        dep, exog_interact, entity_effects=True, time_effects=True
-    )
-    results["interaction"] = mod_interact.fit(
+    results["pooled_supply_only"] = mod_pooled.fit(
         cov_type="clustered", cluster_entity=True
     )
-    logger.info("Interaction: n=%d", results["interaction"].nobs)
 
-    # ---- Robustness: Driscoll-Kraay (kernel) SEs --------------------------
-    # With only 6 entity clusters, cluster-robust SEs may be unreliable.
-    # Driscoll-Kraay SEs are consistent under both cross-sectional and
-    # temporal dependence without requiring a large number of clusters.
-    try:
-        results["twoway_fe_driscoll_kraay"] = mod_twoway.fit(
-            cov_type="kernel"
-        )
-        results["interaction_driscoll_kraay"] = mod_interact.fit(
-            cov_type="kernel"
-        )
-        logger.info(
-            "Driscoll-Kraay robustness check computed for twoway_fe and interaction specs."
-        )
-    except Exception as exc:
-        logger.warning(
-            "Driscoll-Kraay SEs could not be computed: %s", exc
-        )
-
-    return results
-
-
-def _run_with_statsmodels(df: pd.DataFrame) -> dict[str, object]:
-    """Fallback: panel FE via statsmodels OLS with dummy variables."""
-    import statsmodels.api as sm
-
-    df = df.copy()
-    results = {}
-
-    # Create dummy columns (cast to float — pd.get_dummies returns bool
-    # by default, which creates a mixed dtype=object design matrix that
-    # statsmodels cannot invert).
-    bucket_dummies = pd.get_dummies(df["maturity_bucket"], prefix="d_bkt", drop_first=True, dtype=float)
-    week_dummies = pd.get_dummies(df["week_start"].astype(str), prefix="d_wk", drop_first=True, dtype=float)
-
-    dep = df["delta_position"].values
-
-    # ---- Spec 1: Pooled OLS ----------------------------------------------
-    X_pooled = sm.add_constant(df[["supply_B", "lagged_dealer_share"]])
-    mod_pooled = sm.OLS(dep, X_pooled).fit(cov_type="cluster",
-                                            cov_kwds={"groups": df["maturity_bucket"]})
-    results["pooled"] = mod_pooled
-
-    # ---- Spec 2: Bucket FE only ------------------------------------------
-    X_bucket = pd.concat([df[["supply_B", "lagged_dealer_share"]], bucket_dummies], axis=1)
-    mod_bucket = sm.OLS(dep, X_bucket).fit(cov_type="cluster",
-                                            cov_kwds={"groups": df["maturity_bucket"]})
-    results["bucket_fe"] = mod_bucket
-
-    # ---- Spec 3: Two-way FE (bucket + week) ------------------------------
-    X_twoway = pd.concat([df[["supply_B", "lagged_dealer_share"]],
-                          bucket_dummies, week_dummies], axis=1)
-    mod_twoway = sm.OLS(dep, X_twoway).fit(cov_type="cluster",
-                                            cov_kwds={"groups": df["maturity_bucket"]})
-    results["twoway_fe"] = mod_twoway
-
-    # ---- Spec 4: Two-way FE + interaction --------------------------------
-    X_interact = pd.concat([
-        df[["supply_B", "lagged_dealer_share", "supply_x_soft_demand"]],
-        bucket_dummies, week_dummies,
-    ], axis=1)
-    mod_interact = sm.OLS(dep, X_interact).fit(
-        cov_type="cluster", cov_kwds={"groups": df["maturity_bucket"]}
+    exog_fe = df[["supply_B"]]
+    mod_bucket = PanelOLS(dep, exog_fe, entity_effects=True)
+    results["bucket_fe_supply_only"] = mod_bucket.fit(
+        cov_type="clustered", cluster_entity=True
     )
-    results["interaction"] = mod_interact
+
+    mod_twoway = PanelOLS(dep, exog_fe, entity_effects=True, time_effects=True)
+    results["twoway_fe_supply_only"] = mod_twoway.fit(
+        cov_type="clustered", cluster_entity=True
+    )
+    results["twoway_fe_supply_only_driscoll_kraay"] = mod_twoway.fit(
+        cov_type="kernel",
+        kernel="bartlett",
+        bandwidth=primary_bandwidth,
+    )
+
+    # ---- Strict previous-calendar-week control robustness ----------------
+    strict_dep = strict_lag["delta_position"]
+    strict_exog = strict_lag[["supply_B", "lagged_dealer_share"]]
+    mod_strict = PanelOLS(
+        strict_dep,
+        strict_exog,
+        entity_effects=True,
+        time_effects=True,
+    )
+    results["twoway_fe_strict_lag"] = mod_strict.fit(
+        cov_type="clustered", cluster_entity=True
+    )
+    results["twoway_fe_strict_lag_driscoll_kraay"] = mod_strict.fit(
+        cov_type="kernel",
+        kernel="bartlett",
+        bandwidth=strict_bandwidth,
+    )
 
     return results
 
@@ -542,7 +567,7 @@ def _run_per_bucket_regressions(panel: pd.DataFrame) -> pd.DataFrame:
             se = res.bse["supply_B"]
             t = res.tvalues["supply_B"]
             p = res.pvalues["supply_B"]
-        except Exception as exc:
+        except (KeyError, ValueError, np.linalg.LinAlgError) as exc:
             logger.warning("Bucket %s regression failed: %s", bucket, exc)
             continue
 
@@ -632,8 +657,18 @@ def generate_panel_fe_figures(
     paths: dict[str, Path] = {}
 
     # ---- Figure 1: Coefficient comparison across specs --------------------
-    spec_names = ["pooled", "bucket_fe", "twoway_fe_driscoll_kraay", "interaction_driscoll_kraay"]
-    spec_labels = ["Pooled OLS", "Bucket FE", "Two-way FE\n(DK)", "Interaction\n(DK)"]
+    spec_names = [
+        "pooled_supply_only",
+        "bucket_fe_supply_only",
+        "twoway_fe_supply_only_driscoll_kraay",
+        "twoway_fe_strict_lag_driscoll_kraay",
+    ]
+    spec_labels = [
+        "Pooled\nsupply-only",
+        "Bucket FE\nsupply-only",
+        "Two-way FE\nsupply-only (DK)",
+        "Two-way FE\nstrict lag (DK)",
+    ]
     param = "supply_B"
 
     coefs = []
@@ -765,18 +800,27 @@ def generate_panel_fe_table(
 
     metadata = results.get("_metadata", {})
     spec_names = [
-        "pooled",
-        "bucket_fe",
-        "twoway_fe_driscoll_kraay",
-        "interaction_driscoll_kraay",
-        "twoway_fe",
-        "interaction",
+        "pooled_supply_only",
+        "bucket_fe_supply_only",
+        "twoway_fe_supply_only_driscoll_kraay",
+        "twoway_fe_supply_only",
+        "twoway_fe_strict_lag_driscoll_kraay",
+        "twoway_fe_strict_lag",
     ]
-    params_of_interest = ["supply_B", "lagged_dealer_share", "supply_x_soft_demand"]
+    params_by_spec = {
+        "pooled_supply_only": ["supply_B"],
+        "bucket_fe_supply_only": ["supply_B"],
+        "twoway_fe_supply_only_driscoll_kraay": ["supply_B"],
+        "twoway_fe_supply_only": ["supply_B"],
+        "twoway_fe_strict_lag_driscoll_kraay": [
+            "supply_B",
+            "lagged_dealer_share",
+        ],
+        "twoway_fe_strict_lag": ["supply_B", "lagged_dealer_share"],
+    }
     param_labels = {
         "supply_B": "Announced supply ($B)",
-        "lagged_dealer_share": "Lagged dealer share",
-        "supply_x_soft_demand": "Supply x Soft demand (lag)",
+        "lagged_dealer_share": "Strict previous-calendar-week dealer share",
         "const": "Constant",
     }
 
@@ -786,7 +830,7 @@ def generate_panel_fe_table(
         if res is None:
             continue
 
-        for param in params_of_interest:
+        for param in params_by_spec[spec]:
             info = _extract_coef(res, param)
             if np.isnan(info["beta"]):
                 continue
@@ -824,6 +868,44 @@ def generate_panel_fe_table(
             "ci_lower": np.nan,
             "ci_upper": np.nan,
         })
+        is_strict_lag = "strict_lag" in spec
+        rows.append({
+            "specification": spec,
+            "variable": "Estimator role",
+            "coefficient": "strict-lag robustness" if is_strict_lag else "primary supply-only",
+            "std_error": np.nan,
+            "ci_lower": np.nan,
+            "ci_upper": np.nan,
+        })
+        rows.append({
+            "specification": spec,
+            "variable": "Current-share substitutions",
+            "coefficient": 0,
+            "std_error": np.nan,
+            "ci_lower": np.nan,
+            "ci_upper": np.nan,
+        })
+        if "driscoll_kraay" in spec:
+            rows.append({
+                "specification": spec,
+                "variable": "Driscoll-Kraay kernel",
+                "coefficient": metadata.get("driscoll_kraay_kernel", "bartlett"),
+                "std_error": np.nan,
+                "ci_lower": np.nan,
+                "ci_upper": np.nan,
+            })
+            rows.append({
+                "specification": spec,
+                "variable": "Driscoll-Kraay bandwidth",
+                "coefficient": metadata.get(
+                    "strict_lag_driscoll_kraay_bandwidth"
+                    if is_strict_lag
+                    else "driscoll_kraay_bandwidth"
+                ),
+                "std_error": np.nan,
+                "ci_lower": np.nan,
+                "ci_upper": np.nan,
+            })
         rows.append({
             "specification": spec,
             "variable": "Week definition",
@@ -842,13 +924,8 @@ def generate_panel_fe_table(
         })
 
         # Add FE flags
-        has_bucket_fe = spec in (
-            "bucket_fe", "twoway_fe", "interaction",
-            "twoway_fe_driscoll_kraay", "interaction_driscoll_kraay",
-        )
-        has_week_fe = spec in (
-            "twoway_fe", "interaction", "twoway_fe_driscoll_kraay", "interaction_driscoll_kraay",
-        )
+        has_bucket_fe = spec != "pooled_supply_only"
+        has_week_fe = spec.startswith("twoway_fe")
         rows.append({
             "specification": spec,
             "variable": "Bucket FE",
@@ -868,6 +945,6 @@ def generate_panel_fe_table(
 
     table = pd.DataFrame(rows)
     out = tables_dir / file_name
-    table.to_csv(out, index=False)
+    table.to_csv(out, index=False, lineterminator="\n")
     logger.info("Saved panel FE results table to %s (%d rows)", out, len(table))
     return out

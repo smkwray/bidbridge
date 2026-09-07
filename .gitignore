@@ -5,6 +5,10 @@ __pycache__/
 .mypy_cache/
 .coverage
 .DS_Store
+~syncthing~*
+**/~syncthing~*
+*.sync-conflict-*
+**/*.sync-conflict-*
 .env
 .venv/
 .ipynb_checkpoints/
@@ -14,9 +18,25 @@ do/
 .claude/
 AGENTS.md
 CLAUDE.md
+.worktrees/
 
 # Logs
 logs/
+
+# OPEN-07 evidence is generated against a clean producer commit, then force-added
+# with the final receipt commit after verification.
+receipts/open07_v2_reproduction_evidence.json
+receipts/open07_v2_remrun_evidence.json
+receipts/open07_bidbridge_reconstructed_input_receipt_v2.json
+receipts/open07_v3_reproduction_evidence.json
+receipts/open07_v3_remrun_evidence.json
+receipts/open07_bidbridge_reconstructed_input_receipt_v3.json
+receipts/open07_v4_reproduction_evidence.json
+receipts/open07_v4_remrun_evidence.json
+receipts/open07_bidbridge_reconstructed_input_receipt_v4.json
+receipts/open07_v5_reproduction_evidence.json
+receipts/open07_v5_remrun_evidence.json
+receipts/open07_bidbridge_reconstructed_input_receipt_v5.json
 
 # Data artifacts
 data/raw/**
@@ -31,6 +51,19 @@ data/external/**
 # Output artifacts
 outputs/figures/**
 outputs/tables/**
+outputs/open07_v2/**
+outputs/open07_v3/**
+outputs/open07_v4/**
+outputs/open07_v5/**
 !outputs/figures/.gitkeep
 !outputs/tables/.gitkeep
 bidbridge.egg-info/
+
+# Device-local configuration and generated reports
+.env.*
+.codex/
+.cursor/
+.claude/
+*.sync-conflict-*
+outputs/reports/
+outputs/*.md

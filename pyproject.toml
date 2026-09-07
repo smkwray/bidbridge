@@ -39,6 +39,10 @@ include = ["bidbridge*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+addopts = [
+  "--ignore-glob=*sync-conflict*",
+  "--ignore-glob=*~syncthing~*",
+]
 markers = [
   "network: tests that hit live external sources",
 ]

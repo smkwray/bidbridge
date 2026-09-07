@@ -4,19 +4,19 @@
 
 Do primary dealers act as short-run balance-sheet bridges when Treasury supply exceeds end-investor demand?
 
-BidBridge builds an 846-week auction-week panel (2010-2026) from five public federal data sources, identifies supply shocks from pre-auction announcements, and traces their impact on dealer inventories using local projections with HAC inference.
+BidBridge builds an 846-week auction-week panel (2010-2026) from five public federal data sources and studies associations between announced Treasury supply and aggregate primary-dealer positions.
 
 ---
 
 ## Key Findings
 
-### Immediate dealer absorption of supply shocks
+### Same-week high-supply indicator
 
-When Treasury announced supply exceeds its expanding historical 75th percentile, primary dealers accumulate **+$7.3 billion** in net Treasury inventory in the same week (p < 0.001, Newey-West HAC). The impulse response is front-loaded: most of the absorption happens at horizon 0, with partial reversal over subsequent weeks as dealers distribute holdings to end-investors through the secondary market.
+At h=0, the coefficient on a binary indicator for weeks when announced aggregate supply exceeds its expanding-window 75th percentile is **+$7.3 billion** of aggregate dealer-position change (p < 0.001, Newey-West HAC). The threshold is computed through the current week, so this is not a continuous offering-amount slope or a strictly prior-history-only shock. These aggregate data do not identify terminal holders or the transactions behind later position normalization.
 
-### Quantitative tightening amplifies the bridge effect 2.1x
+### QT and non-QT point estimates
 
-During Fed balance-sheet runoff periods (QT1: Oct 2017--Sep 2019, QT2: Jun 2022--Dec 2025), the dealer inventory response to a supply shock is **+$10.9 billion** (p < 0.001) vs **+$5.2 billion** outside QT (p = 0.02). When the Fed is no longer absorbing new issuance through reinvestment, dealers must warehouse supply that would otherwise flow onto the Fed's balance sheet. Identified via shock x QT interaction on the full contiguous panel with the total effect computed via the delta method.
+The h=0 high-supply-indicator point estimate is **+$10.9 billion** during QT and **+$5.2 billion** outside QT. The bounded association evidence does not treat this contrast as evidence of amplification or an established regime difference. It is not a structural causal estimate of Federal Reserve policy or dealer capacity.
 
 ### Supply and dealer share are inversely correlated
 
@@ -24,7 +24,7 @@ Weekly supply volume and dealer allotment share have a correlation of **r = -0.8
 
 ### Maturity gradient in dealer absorption
 
-Dealer absorption follows a monotonic maturity gradient: **62% of Bills**, 38% of short coupons (2--3Y), 30% of belly coupons (5--7Y), 27% of long bonds (10--30Y), and just 24% of TIPS. This is consistent with dealers acting as short-duration warehouses with high turnover -- they absorb the most where secondary market liquidity is deepest and holding periods are shortest. Confirmed by maturity-bucket panel FE with bucket and week fixed effects on a balanced 6-bucket x 675-week panel using directly observed NY Fed position data by remaining-maturity band (n = 2,584 in estimation).
+Dealer auction allotments follow a maturity gradient, with higher aggregate shares in bills than in longer coupons. The headline inventory evidence comes from a maturity-bucket panel FE with bucket and week fixed effects using directly observed NY Fed position data by remaining-maturity band. This pattern supports short-run dealer warehousing; it does not identify terminal ownership, customer identity, or holding periods.
 
 ### Refunding weeks drive concentrated inventory accumulation
 
@@ -32,7 +32,7 @@ Quarterly refunding weeks (identified by the presence of both a 10-year Note and
 
 ### Bridge episodes cluster in stress regimes
 
-85 bridge episodes are identified using a backward-looking classification: heavy supply (rolling 52-week median), positive inventory accumulation, and a z-score > 1 on a trailing 13-week window. These cluster during **risk-off periods** (bridge rate 17.0% vs 11.2% baseline) defined by elevated auction tails, and during **QT periods** (12.2% vs 12.9% baseline). The extended OLS regression (R² = 0.168, n = 673) shows that each additional $1 billion of Fed purchases (SOMA) reduces dealer inventory by $92 million (p = 0.003), while each year of secular trend reduces average inventory change by $3.1 billion -- dealers are becoming more efficient distributors over time.
+85 bridge episodes are identified using a backward-looking classification: heavy supply (rolling 52-week median), positive inventory accumulation, and a z-score > 1 on a trailing 13-week window. These cluster during **risk-off periods** (bridge rate 17.0% vs 11.2% baseline) defined by elevated auction tails, and during **QT periods** (12.2% vs 12.9% baseline). Extended OLS estimates provide descriptive associations with SOMA and time trends; they do not identify a structural policy mechanism or distribution efficiency.
 
 ## Quick Start
 
@@ -51,12 +51,20 @@ bidbridge fetch              # Download 5 public data sources
 bidbridge build-panel        # Build 846-week panel + maturity panels
 bidbridge analyze            # Generate descriptive figures, tables, regressions
 bidbridge lp                 # Local projection impulse responses
-bidbridge panel-fe           # Headline FE + Thursday-start robustness (Driscoll-Kraay headline)
+bidbridge panel-fe           # Supply-only headline FE + strict-lag and Thursday robustness
+bidbridge promotion          # Compact warehousing-association summary and bounded memo
+bidbridge ratewall-support   # Bounded dealer-warehousing support contract for scenario consumers
 bidbridge persistence        # Inventory persistence analysis
 bidbridge stress             # Stress regime analysis
 
 # Incremental refresh (skip sources fetched within 1 day)
 bidbridge update --max-age 1
+
+# Frozen reconstructed-input evidence chain (no network refetch)
+python -B -m bidbridge.open07_reconstruction
+python -B -m bidbridge.open07_reproduce --producer-commit <commit> --promote
+python -B -m bidbridge.open07_reproduce --producer-commit <commit>
+python -B -m bidbridge.open07_reconstructed_receipt --producer-commit <commit>
 ```
 
 ## Data Sources
@@ -75,9 +83,9 @@ The pipeline merges these into a panel using CUSIP + issue-date joins, with SOMA
 
 ## Methods
 
-### Local Projections (main specification)
+### Local Projections (supporting specification)
 
-Jorda-style LPs estimate the cumulative dealer inventory response to ex ante supply shocks:
+Jorda-style LPs estimate the cumulative dealer-position association with the binary high-supply indicator:
 
 ```
 cum_inv_change(t,t+h) = alpha + beta * shock(t) + theta * shock(t) * soft_demand(t-1) + controls(t-1) + u
@@ -86,7 +94,7 @@ cum_inv_change(t,t+h) = alpha + beta * shock(t) + theta * shock(t) * soft_demand
 - **Shock**: Announced supply > expanding-window p75 (pre-auction only, no outcome contamination)
 - **Controls**: All lagged one week (supply, dealer share, trend, SOMA change)
 - **Inference**: Newey-West HAC via statsmodels, bandwidth = h+1
-- **Regime effects**: Shock x QT interaction, total QT effect via delta method
+- **Regime surfaces**: high-supply-indicator x QT interaction and total QT point estimate; no promoted amplification claim without inference on the interaction
 - **QT periods**: Announcement-dated (Oct 2017-Sep 2019, Jun 2022-Dec 2025)
 
 ### Panel Fixed Effects
@@ -114,7 +122,9 @@ Backward-looking classification using only past data:
 | `bidbridge build-panel` | Build aggregate + maturity panels from raw data |
 | `bidbridge analyze` | Generate descriptive figures, tables, and regressions |
 | `bidbridge lp` | Local projection impulse responses |
-| `bidbridge panel-fe` | Headline maturity-bucket FE plus Thursday-start robustness (Driscoll-Kraay headline) |
+| `bidbridge panel-fe` | Supply-only maturity-bucket FE headline plus strict-lag and Thursday-start robustness (Driscoll-Kraay) |
+| `bidbridge promotion` | Write the bounded dealer-warehousing association summary and memo |
+| `bidbridge ratewall-support` | Write the bounded dealer-warehousing support contract |
 | `bidbridge persistence` | Inventory persistence and half-life analysis |
 | `bidbridge stress` | Stress regime analysis (QT, TGA, risk-off) |
 | `bidbridge update` | Incremental refresh + rebuild |
@@ -166,7 +176,7 @@ The codebase has been through **5 independent audit passes** addressing:
 - CUSIP reopening merge correctness
 - Forward-looking SOMA/H.8 timing (lagged 1 week)
 - NaN-as-zero masking in inventory and weighted averages
-- Endogenous LP treatment (replaced with ex ante supply shock)
+- Endogenous LP treatment (replaced with a pre-auction-announcement high-supply indicator)
 - Look-ahead thresholds (replaced with rolling/expanding windows)
 - Announcement-dated QT regimes (replacing realized SOMA declines)
 - Mechanical endogeneity in panel FE (replaced proportional coupon split with directly observed NY Fed maturity bands)

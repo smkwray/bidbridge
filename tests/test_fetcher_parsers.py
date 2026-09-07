@@ -7,6 +7,7 @@ from bidbridge.data.sources.nyfed_pd import finalize_primary_dealer_dataframe
 from bidbridge.data.sources.treasury_investor_class import (
     InvestorClassDiscoveryError,
     _discover_allotment_links,
+    _normalize_column_name,
     _parse_allotment_df,
     _read_allotment_workbook,
 )
@@ -39,6 +40,25 @@ def test_discover_allotment_links_handles_changed_path_structure(monkeypatch):
     assert links["bills"].endswith("/files/current-bills-2026.xls")
     assert links["hist_coupons"].endswith("/archive/historical-coupons-2000.xls")
     assert links["hist_bills"].endswith("/legacy/historical-bills-2001.xlsx")
+
+
+def test_discover_allotment_links_keeps_current_and_historical_treasury_labels(monkeypatch):
+    html = """
+    <a href="/system/files/276/April-22-2026-IC-Coupons.xls">Coupon Auctions - Data from October 2009-present</a>
+    <a href="/system/files/276/April-7_2026-IC-Bills.xls">Bill Auctions - Data from October 2009-present</a>
+    <a href="/system/files/276/Website-PDO-4-A-Coupons-Jan-2000-Sep%202009.xls">Coupon Auctions - Data from January 2000-September 2009</a>
+    <a href="/system/files/276/Website-IC-allotments-Bills-Aug-2001-Sep-2009.xls">Bill Auctions - Data from August 2001-September 2009</a>
+    """
+
+    monkeypatch.setattr(
+        "bidbridge.data.sources.treasury_investor_class.requests.get",
+        lambda *args, **kwargs: _MockResponse(text=html),
+    )
+    links = _discover_allotment_links()
+    assert links["coupons"].endswith("April-22-2026-IC-Coupons.xls")
+    assert links["bills"].endswith("April-7_2026-IC-Bills.xls")
+    assert "Sep%202009" in links["hist_coupons"]
+    assert "Sep-2009" in links["hist_bills"]
 
 
 def test_discover_allotment_links_raises_on_empty_page(monkeypatch):
@@ -113,6 +133,13 @@ def test_read_allotment_workbook_uses_xlsx_engine(monkeypatch):
     df = _read_allotment_workbook("https://home.treasury.gov/files/current-coupons.xlsx")
     assert calls == [(None, None), (None, 1)]
     assert list(df.columns) == ["issue_date", "cusip", "dealer_share", "total_issue_amount"]
+
+
+def test_investor_class_column_normalizer_handles_split_words():
+    assert _normalize_column_name("Deposi\ntory Insti\ntutions") == "depository_share"
+    assert _normalize_column_name("Invest\nment Funds") == "investment_funds_share"
+    assert _normalize_column_name("Foreign and Interna\ntional") == "foreign_share"
+    assert _normalize_column_name("Security Term") == "security_term"
 
 
 def test_parse_allotment_df_converts_amounts_to_shares():

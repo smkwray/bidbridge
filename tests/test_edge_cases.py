@@ -16,6 +16,17 @@ import pandas as pd
 import pytest
 
 
+def test_resolve_data_path_follows_one_line_file_pointer(tmp_path):
+    from bidbridge.data.pipeline import resolve_data_path
+
+    actual = tmp_path / "actual.csv"
+    pointer = tmp_path / "pointer.csv"
+    actual.write_text("a,b\n1,2\n", encoding="utf-8")
+    pointer.write_text(str(actual), encoding="utf-8")
+
+    assert resolve_data_path(pointer) == actual
+
+
 # ---------------------------------------------------------------------------
 # 1.  Reopening merge — same CUSIP, two different issue_dates
 # ---------------------------------------------------------------------------

@@ -245,6 +245,36 @@ def _panel_fe() -> int:
     return 0
 
 
+def _promotion() -> int:
+    from .analysis.promotion import write_promotion_artifacts
+    from .paths import OUTPUTS_DIR, TABLES_DIR
+
+    outputs = write_promotion_artifacts(
+        TABLES_DIR,
+        TABLES_DIR / "bidbridge_promotion_summary.csv",
+        OUTPUTS_DIR / "bidbridge_promotion_memo.md",
+    )
+    for name, path in outputs.items():
+        print(f"{name}={path}")
+    return 0
+
+
+def _ratewall_support() -> int:
+    from .analysis.ratewall_contracts import (
+        write_ratewall_dealer_warehousing_support_contract,
+    )
+    from .paths import PROCESSED_DIR, TABLES_DIR
+
+    output, frame = write_ratewall_dealer_warehousing_support_contract(
+        panel_path=PROCESSED_DIR / "auction_week_panel.csv",
+        persistence_summary_path=TABLES_DIR / "persistence_summary.csv",
+        output_path=TABLES_DIR / "bidbridge_ratewall_dealer_warehousing_support.csv",
+    )
+    print(f"ratewall_dealer_warehousing_support={output}")
+    print(f"rows={len(frame)}")
+    return 0
+
+
 def _update(max_age_days: float) -> int:
     from .data.pipeline import build_panel, fetch_all
 
@@ -272,6 +302,7 @@ def _run_all(start_date: str) -> int:
         run_bucket_fe_regression,
     )
     from .analysis.pressure_monitor import write_upcoming_pressure_monitor
+    from .analysis.promotion import write_promotion_artifacts
     from .analysis.site_data import write_site_data
     from .analysis.data_audit import write_data_audit
     from .analysis.persistence import generate_persistence_figures, generate_persistence_table
@@ -357,6 +388,13 @@ def _run_all(start_date: str) -> int:
     stress_panel = add_stress_flags(panel)
     analysis_outputs.update(generate_stress_figures(stress_panel, FIGURES_DIR))
     analysis_outputs["stress_summary"] = generate_stress_table(stress_panel, TABLES_DIR)
+    analysis_outputs.update(
+        write_promotion_artifacts(
+            TABLES_DIR,
+            TABLES_DIR / "bidbridge_promotion_summary.csv",
+            OUTPUTS_DIR / "bidbridge_promotion_memo.md",
+        )
+    )
 
     upcoming_df = pd.read_csv(upcoming_path, parse_dates=["auction_date", "issue_date"])
     extension_outputs = write_upcoming_pressure_monitor(
@@ -448,6 +486,8 @@ def main(argv: list[str] | None = None) -> int:
     subparsers.add_parser("stress", help="Run stress-flag regime analysis")
     subparsers.add_parser("lp", help="Run local projection impulse responses")
     subparsers.add_parser("panel-fe", help="Run maturity-bucket panel fixed-effects regressions")
+    subparsers.add_parser("promotion", help="Write promotion summary and memo")
+    subparsers.add_parser("ratewall-support", help="Write RateWall dealer-warehousing support contract")
 
     update_parser = subparsers.add_parser(
         "update", help="Incremental refresh: skip sources fetched within max-age days",
@@ -500,6 +540,10 @@ def main(argv: list[str] | None = None) -> int:
         return _local_projections()
     if args.command == "panel-fe":
         return _panel_fe()
+    if args.command == "promotion":
+        return _promotion()
+    if args.command == "ratewall-support":
+        return _ratewall_support()
     if args.command == "update":
         return _update(args.max_age)
     if args.command == "run-all":

@@ -24,6 +24,26 @@ from .sources.treasury_investor_class import fetch_investor_class_allotments
 logger = logging.getLogger(__name__)
 
 
+def resolve_data_path(path: Path) -> Path:
+    """Resolve a one-line local data pointer to the actual file when present."""
+    path = Path(path)
+    if not path.exists() or path.is_dir() or path.stat().st_size > 4096:
+        return path
+
+    try:
+        text = path.read_text(encoding="utf-8").strip()
+    except UnicodeDecodeError:
+        return path
+
+    if not text or "\n" in text or "," in text:
+        return path
+
+    candidate = Path(text).expanduser()
+    if candidate.is_file():
+        return candidate
+    return path
+
+
 def _tag_refunding_weeks(auctions: pd.DataFrame) -> pd.DataFrame:
     """Mark refunding weeks based on the quarterly refunding package.
 
@@ -66,6 +86,7 @@ def _tag_refunding_weeks(auctions: pd.DataFrame) -> pd.DataFrame:
 
 def _harmonize_auctions(raw_path: Path) -> pd.DataFrame:
     """Load raw auction CSV and harmonize to panel input schema."""
+    raw_path = resolve_data_path(raw_path)
     df = pd.read_csv(raw_path, parse_dates=["auction_date", "issue_date", "maturity_date"])
 
     # Map instrument_group to the security_type expected by build_weekly_panel
@@ -96,6 +117,7 @@ def _harmonize_auctions(raw_path: Path) -> pd.DataFrame:
 
 def _harmonize_investor_class(raw_path: Path) -> pd.DataFrame:
     """Load raw investor class CSV and harmonize."""
+    raw_path = resolve_data_path(raw_path)
     df = pd.read_csv(raw_path, parse_dates=["issue_date"])
 
     keep = [
@@ -108,6 +130,7 @@ def _harmonize_investor_class(raw_path: Path) -> pd.DataFrame:
 
 def _harmonize_dealer_stats(raw_path: Path) -> pd.DataFrame:
     """Load raw dealer stats CSV and harmonize to panel input schema."""
+    raw_path = resolve_data_path(raw_path)
     df = pd.read_csv(raw_path, parse_dates=["week_start", "week_end"])
 
     keep = [
@@ -121,6 +144,7 @@ def _manifest_age_days(manifest_path: Path) -> float | None:
     """Return the age (in days) of a manifest file, or None if it doesn't exist."""
     if not manifest_path.exists():
         return None
+    manifest_path = resolve_data_path(manifest_path)
     import json
     from datetime import datetime, timezone
 
@@ -231,6 +255,7 @@ def build_panel(
     # SOMA as_of_date is Wednesday. To avoid look-ahead bias, lag by one week:
     # the SOMA observation from Wednesday of week W is merged onto panel week W+1.
     if soma_path.exists():
+        soma_path = resolve_data_path(soma_path)
         soma = pd.read_csv(soma_path, parse_dates=["as_of_date"])
         soma_value_cols = ["soma_treasury_total", "soma_bills", "soma_notes_bonds", "soma_tips"]
         available_vals = [c for c in soma_value_cols if c in soma.columns]
@@ -263,6 +288,7 @@ def build_panel(
     # onto panel week W+1 (the auction week it could actually explain).
     h8_path = raw_dir / "fed" / "h8_bank_securities.csv"
     if h8_path.exists():
+        h8_path = resolve_data_path(h8_path)
         h8 = pd.read_csv(h8_path, parse_dates=["as_of_date"])
         # Map H.8 as_of_date (Wednesday) to the NEXT Monday-start week
         h8["_merge_week"] = (

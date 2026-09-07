@@ -5,8 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from bidbridge import cli
-import bidbridge.paths as paths
+from bidbridge import cli, paths
 
 
 class _FakeResult:
@@ -268,7 +267,18 @@ def _install_run_all_stubs(monkeypatch, fe_eligible: bool) -> None:
     def fake_generate_lp_placebo_table(placebo: dict[str, pd.DataFrame], output_dir: Path):
         return _write_csv(
             output_dir / "lp_placebo_results.csv",
-            [{"placebo": "lead_shock", "beta": 0.0}],
+            [
+                {
+                    "placebo_type": "lead_placebo_h1",
+                    "horizon": 0,
+                    "p_value": 0.50,
+                },
+                {
+                    "placebo_type": "shifted_placebo_h4",
+                    "horizon": 0,
+                    "p_value": 0.50,
+                },
+            ],
         )
 
     def fake_build_maturity_panel(auctions: pd.DataFrame, investor: pd.DataFrame, week_definition: str = "monday"):
@@ -350,7 +360,7 @@ def _install_run_all_stubs(monkeypatch, fe_eligible: bool) -> None:
 
     def fake_write_site_data(panel: pd.DataFrame, lp_results, stress_summary: pd.DataFrame, bridge_summary: pd.DataFrame, output_path: str | Path, pressure_monitor: pd.DataFrame | None = None, maturity_panel: pd.DataFrame | None = None):
         payload = {
-            "panel_stats": {"total_weeks": int(len(panel))},
+            "panel_stats": {"total_weeks": len(panel)},
             "pressure_monitor": [] if pressure_monitor is None else pressure_monitor.assign(week_start=pressure_monitor["week_start"].astype(str)).to_dict(orient="records"),
         }
         output = Path(output_path)

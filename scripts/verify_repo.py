@@ -10,8 +10,6 @@ from bidbridge.paths import ROOT
 
 REQUIRED = [
     ROOT / "README.md",
-    ROOT / "AGENTS.md",
-    ROOT / "docs" / "plan.md",
     ROOT / "docs" / "data_sources.md",
     ROOT / "docs" / "panel_spec.md",
     ROOT / "configs" / "sources.yml",
