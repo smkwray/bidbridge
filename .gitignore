@@ -67,3 +67,12 @@ bidbridge.egg-info/
 *.sync-conflict-*
 outputs/reports/
 outputs/*.md
+
+# Private local configuration
+.private-denylist
+.*-private-denylist
+venv/
+
+/build/
+
+/dist/

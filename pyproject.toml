@@ -5,12 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "bidbridge"
 version = "0.1.0"
-description = "Seeded research repo for primary dealer bridge / Treasury auction capacity analysis."
+description = "Treasury auction supply and aggregate primary-dealer position analysis."
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
-  {name = "Shane Wray"}
+  {name = "smkwray"}
 ]
 dependencies = [
   "pandas>=2.0",

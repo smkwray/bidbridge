@@ -63,10 +63,8 @@ def _doctor() -> int:
     required = [
         ROOT / "pyproject.toml",
         ROOT / "README.md",
-        ROOT / "AGENTS.md",
         ROOT / "configs" / "study.yml",
         ROOT / "configs" / "sources.yml",
-        ROOT / "docs" / "plan.md",
     ]
     missing = [path for path in required if not path.exists()]
     print(f"repo_root={ROOT}")

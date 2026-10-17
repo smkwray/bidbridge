@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 import re
-from html import unescape
+from html.parser import HTMLParser
 from io import BytesIO
 from datetime import datetime, timezone
 from pathlib import Path
@@ -59,14 +59,33 @@ class InvestorClassDiscoveryError(RuntimeError):
 def _extract_anchor_hrefs(html: str) -> list[tuple[str, str]]:
     """Return raw href/text pairs from anchor tags in a landing page."""
 
-    anchors: list[tuple[str, str]] = []
-    pattern = re.compile(r'<a\b[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', re.I | re.S)
-    for match in pattern.finditer(html):
-        href = unescape(match.group(1)).strip()
-        text = re.sub(r"<[^>]+>", " ", match.group(2))
-        text = re.sub(r"\s+", " ", unescape(text)).strip()
-        anchors.append((href, text))
-    return anchors
+    class AnchorParser(HTMLParser):
+        def __init__(self) -> None:
+            super().__init__(convert_charrefs=True)
+            self.anchors: list[tuple[str, str]] = []
+            self.href: str | None = None
+            self.parts: list[str] = []
+
+        def handle_starttag(self, tag, attrs) -> None:
+            if tag == "a":
+                self.href = dict(attrs).get("href")
+                self.parts = []
+
+        def handle_data(self, data) -> None:
+            if self.href is not None:
+                self.parts.append(data)
+
+        def handle_endtag(self, tag) -> None:
+            if tag == "a" and self.href is not None:
+                text = " ".join(" ".join(self.parts).split())
+                self.anchors.append((self.href.strip(), text))
+                self.href = None
+                self.parts = []
+
+    parser = AnchorParser()
+    parser.feed(html)
+    parser.close()
+    return parser.anchors
 
 
 def _classify_allotment_link(href: str, text: str) -> str | None:

@@ -187,3 +187,19 @@ def test_finalize_primary_dealer_dataframe_forward_fills_and_reanchors():
     assert finalized.loc[1, "pd_repo_treasury"] == 10.0
     assert finalized.loc[1, "pd_repo_treasury_raw"] != finalized.loc[1, "pd_repo_treasury"]
     assert finalized.loc[0, "week_start"].strftime("%Y-%m-%d") == "2025-01-02"
+
+
+def test_discover_allotment_links_accepts_unquoted_html_attributes(monkeypatch):
+    html = """
+    <a href=/files/current-coupons.xlsx><span>Coupon</span> Auctions</a>
+    <a href=/files/current-bills.xls?download=1&amp;view=full>Bill Auctions</a>
+    <a href="/files/historical-coupons.xls">Historical Coupon Auctions</a>
+    """
+    monkeypatch.setattr(
+        "bidbridge.data.sources.treasury_investor_class.requests.get",
+        lambda *_args, **_kwargs: _MockResponse(text=html),
+    )
+    links = _discover_allotment_links()
+    assert links["coupons"] == "https://home.treasury.gov/files/current-coupons.xlsx"
+    assert links["bills"] == "https://home.treasury.gov/files/current-bills.xls?download=1&view=full"
+    assert links["hist_coupons"] == "https://home.treasury.gov/files/historical-coupons.xls"
