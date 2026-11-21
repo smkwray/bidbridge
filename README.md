@@ -1,31 +1,20 @@
 # BidBridge
 
-BidBridge measures the association between announced Treasury supply and
-aggregate primary-dealer positions. It combines auction offering amounts with
-New York Fed dealer positions by remaining-maturity bucket. The
-[research site](https://smkwray.github.io/bidbridge/) presents the estimates and
-their interpretation limits.
+BidBridge measures the weekly association between announced US Treasury auction offering amounts and changes in aggregate primary-dealer Treasury positions by remaining-maturity bucket. It downloads public Treasury, New York Fed, and Federal Reserve series, builds weekly and maturity-bucket panels, and writes two-way fixed-effects regressions, local projections, persistence and stress summaries, figures, and static site data.
 
-## Result and limits
+## Data
 
-The headline specification estimates a contemporaneous increase of $9.4536
-million in aggregate dealer positions per $1 billion of announced offering
-amounts, with a 95% confidence interval of [$2.5134 million, $16.3937 million].
-It uses 3,958 maturity-bucket-week observations, Monday-aligned weeks, bucket and
-week fixed effects, and Bartlett Driscoll–Kraay inference with bandwidth 6.
-The strict-lag confidence interval includes zero.
+All primary and context sources are public and require no API keys:
 
-This is an aggregate warehousing association. It does not identify final holders,
-customer trades, inventory costs, deposit effects, or a structural causal supply
-response. Dealer allotment shares describe initial auction allocation, not who
-ultimately absorbs marginal supply.
+- US Treasury FiscalData (`auctions_query` API): auction offering amounts, dates, security types, bid-to-cover ratios, yields or rates, and upcoming auction notices.
+- NY Fed Primary Dealer Statistics API: weekly aggregate dealer Treasury positions by remaining-maturity band (in USD millions), transactions, and financing.
+- US Treasury Investor Class Auction Allotments (`.xls` releases): initial auction allotments by investor class.
+- NY Fed System Open Market Account (SOMA) summary API: weekly Federal Reserve Treasury holdings, lagged one week in the weekly panel.
+- Federal Reserve H.8 via FRED: weekly seasonally adjusted and non-seasonally adjusted commercial-bank Treasury and agency securities, lagged one week in the weekly panel.
 
-Binary high-supply local projections are descriptive diagnostics: their expanding
-75th-percentile threshold includes the current week, and two of five
-non-overlapping lead tests reject zero. Quantitative-tightening splits remain
-descriptive point estimates, without an established amplification effect.
+Auction records join to investor-class allotments on CUSIP and issue date. `configs/sources.yml` also lists FINRA TRACE Treasury aggregates as an optional overlay not fetched by the default pipeline.
 
-## Install and validate
+## Install
 
 Python 3.11 or later is required. From the repository root:
 
@@ -33,38 +22,24 @@ Python 3.11 or later is required. From the repository root:
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -e '.[dev]'
-python -B -m pytest -q -m 'not network'
-ruff check .
-bidbridge doctor
 ```
 
-Live acquisition tests run separately with `python -B -m pytest -q -m network`.
-A passing offline suite does not verify current upstream availability.
+## Usage
 
-## Sources
+Check repository layout and configured sources:
 
-| Source | Use |
-|---|---|
-| Treasury FiscalData auctions | Offering amounts, dates, security types, and bidder results |
-| NY Fed primary dealer statistics | Weekly positions, financing, and transactions |
-| Treasury investor-class allotments | Initial auction buyer shares |
-| NY Fed System Open Market Account (SOMA) | Federal Reserve holdings context |
-| Federal Reserve H.8 | Bank Treasury and agency securities context |
+```bash
+bidbridge doctor
+bidbridge list-sources
+```
 
-The pipeline joins auctions by security identifier and issue date and lags SOMA
-and H.8 context by one week. Auction maturity and dealer remaining-maturity
-bands retain their distinct definitions. See the
-[source guide](docs/source_guide.md) and [empirical design](docs/empirical_design.md).
-
-## Build
-
-The full workflow acquires data and replaces local derived outputs:
+Run the full pipeline (fetch data, build panels, audit inputs, estimate models, and write tables, figures, and site JSON):
 
 ```bash
 bidbridge run-all
 ```
 
-Individual stages support inspection and selective rebuilding:
+Pass `--start-date YYYY-MM-DD` (default `2010-01-01`) to change the fetch start date. Individual stages can be run separately:
 
 ```bash
 bidbridge fetch
@@ -72,24 +47,48 @@ bidbridge build-panel
 bidbridge analyze
 bidbridge panel-fe
 bidbridge lp
+bidbridge persistence
+bidbridge stress
 ```
 
-`panel-fe` produces the supply-only headline and strict-lag and week-alignment
-checks. It withholds headline outputs when granular coupon bands are unavailable.
-`promotion` writes a bounded association summary; `ratewall-support` writes an
-assumption-limited scenario-consumption contract. These commands do not confer
-causal authority on the estimates. Run `bidbridge --help` for all commands.
+`bidbridge update --max-age 1.0` refreshes only sources older than the given number of days and rebuilds the panel. `bidbridge panel-fe` estimates both Monday-start and Thursday-start maturity-bucket fixed-effects models and refuses to write estimates if granular NY Fed coupon maturity bands are missing. Run `bidbridge --help` for all commands, including synthetic demo targets (`demo-data`, `demo-panel`). Sample settings live in `configs/study.yml`.
 
-The retained numerical result is tied to its own input and output receipt.
-A fresh download or a successful software test does not reproduce that result
-without its specified inputs, sample, and estimator settings.
+## Output
 
-## Files and outputs
+Downloaded data and generated outputs live under `data/`, `outputs/`, and `site/data/` and are ignored by Git.
 
-- `bidbridge/`: acquisition, panel construction, analysis, and CLI.
-- `configs/`: source definitions and study settings.
-- `tests/`: synthetic tests and explicitly marked network tests.
-- `data/` and `outputs/`: local source data and generated analysis; ignored by Git.
-- `site/`: curated static research-site assets.
+| Path | Description |
+| --- | --- |
+| `data/processed/auction_week_panel.csv` | Weekly aggregate Treasury auction supply and primary-dealer balance-sheet panel (auctions in USD, dealer positions in USD millions) |
+| `data/processed/maturity_bucket_panel.csv` | Weekly maturity-bucket panel used for two-way fixed-effects estimation |
+| `outputs/tables/` | Fixed-effects, local-projection, placebo, persistence, stress, audit, and upcoming-supply CSVs |
+| `outputs/figures/` | Static PNG/SVG charts |
+| `site/data/` | JSON exports for the static site under `site/` |
 
-License: MIT.
+## Published estimate and limits
+
+In the archived April 8, 2013 to March 9, 2026 sample (3,958 maturity-bucket-week observations across 6 buckets, Monday-start weeks, bucket and week fixed effects, Bartlett Driscoll-Kraay standard errors with bandwidth 6), $1 billion of announced offering amounts is associated with a $9.45 million contemporaneous increase in aggregate primary-dealer Treasury positions (95% CI: $2.51 million to $16.39 million; Thursday-start check: $14.55 million, 95% CI: $6.76 million to $22.35 million). A fresh `bidbridge run-all` downloads current upstream releases and will not match archived sample dates unless inputs are pinned.
+
+- This is an aggregate short-run warehousing association. It does not identify final holders, customer trades, inventory financing costs, deposit flows, or a causal supply effect.
+- Investor-class allotment shares measure initial auction allocation, not final ownership.
+- NY Fed dealer positions are Wednesday snapshots grouped by remaining maturity, while auctions are grouped by original maturity and settle T+1; under Monday-start weeks, Thursday and Friday auctions can fall after the Wednesday snapshot.
+- Binary high-supply local projections define high-supply weeks using an expanding 75th-percentile threshold that includes the current week, and two of five non-overlapping lead placebo tests reject zero at 5%. Local projections and quantitative-tightening splits are descriptive only.
+
+## Tests
+
+Run the offline test suite and linter:
+
+```bash
+python -B -m pytest -q -m 'not network'
+ruff check .
+```
+
+Run live upstream source tests separately:
+
+```bash
+python -B -m pytest -q -m network
+```
+
+## License
+
+MIT. See `LICENSE`.
