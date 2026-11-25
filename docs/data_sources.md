@@ -1,6 +1,6 @@
 # Data sources
 
-All five priority sources are implemented. TRACE Treasury is an optional stub.
+The pipeline fetches the first five sources below. FINRA TRACE Treasury aggregates are an optional stub.
 
 ## 1. Treasury Auctions (FiscalData)
 

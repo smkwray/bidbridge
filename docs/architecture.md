@@ -64,7 +64,7 @@ The NY Fed suppresses repo/reverse-repo values with `"*"` when too few dealers r
 
 ### Investor-class workbook discovery
 
-Treasury investor-class allotments are still sourced from a changing landing page, but the fetcher now parses all anchor tags, classifies bill versus coupon workbooks from filename and link text, and supports both `.xls` and `.xlsx`. When discovery fails, it raises a structured error with anchor counts instead of silently returning no files.
+Treasury investor-class allotments are sourced from a changing landing page, so the fetcher parses all anchor tags, classifies bill versus coupon workbooks from filename and link text, and supports both `.xls` and `.xlsx`. When discovery fails, it raises a structured error with anchor counts instead of silently returning no files.
 
 ### Week anchoring
 

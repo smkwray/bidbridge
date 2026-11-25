@@ -1,16 +1,11 @@
 # Auction-week panel specification
 
-This is the core table the first paper should revolve around.
+The auction-week panel is the core weekly table (`data/processed/auction_week_panel.csv`).
 
 ## Grain
 
-Default grain: one row per auction week.
-
-Optional extensions:
-
-- week x instrument group,
-- week x maturity bucket,
-- week x bill/coupon split.
+One row per auction week. A separate week x maturity-bucket panel
+(`data/processed/maturity_bucket_panel.csv`) feeds the fixed-effects models.
 
 ## Required columns
 
@@ -31,7 +26,6 @@ Optional extensions:
 
 - weighted_bid_to_cover
 - weighted_tail_bp
-- weighted_high_yield_or_rate if feasible
 
 ### Investor absorption block
 
@@ -52,9 +46,8 @@ Optional extensions:
 
 ### Balance-sheet backdrop block
 
-- soma_holdings_total or soma_change
-- bank_treasury_securities_proxy
-- trace_total_volume_proxy
+- soma_treasury_total (with soma_bills, soma_notes_bonds, and soma_tips where available)
+- bank_treasury_securities
 
 ### Flags
 
@@ -71,8 +64,3 @@ Optional extensions:
 - Shares should be carried in decimals on `[0,1]`.
 - Event flags should be boolean columns, not encoded strings.
 - First differences should be explicit and named with `_change`.
-
-## Minimal success test
-
-A finished panel builder should create a CSV or parquet file with the required columns for a
-reproducible sample window and no duplicate week keys.
